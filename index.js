@@ -71,20 +71,6 @@ bot.start(async (ctx) => {
     });
   }
 
-  await ctx.replyWithPhoto(
-    { source: "./img/welcome-logo.jpg" },
-    {
-      caption: `👋 Вітаємо в *Znaimo*!
-
-Це бот, який допоможе знайти людину для спілкування або серйозних стосунків. Щоб почати — створіть свою анкету.
-
-✨ Заповніть кілька простих питань, додайте фото, і почнімо подорож до нових знайомств!
-
-❤️ Ваша історія може початися просто зараз.`,
-      parse_mode: "Markdown",
-    }
-  );
-
   ctx.reply("✅ Тепер можете переглядати анкети та спілкуватись:", {
     reply_markup: {
       keyboard: [
@@ -490,15 +476,11 @@ bot.on("text", (ctx) => {
   app.use(bot.webhookCallback("/"));
   app.get("/", (_, res) => res.send("🤖 Znaimo Bot is running."));
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`🚀 Server listening on port ${PORT}`);
-  });
-
-  bot.launch({
-    webhook: {
-      domain: "https://telegram-dating-bot-2k8n.onrender.com",
-      port: PORT,
-    },
+    const webhookUrl = `https://znaimo-telegram-bot.onrender.com`;
+    await bot.telegram.setWebhook(webhookUrl);
+    console.log(`✅ Webhook set to ${webhookUrl}`);
   });
 })();
 
