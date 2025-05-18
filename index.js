@@ -313,7 +313,11 @@ bot.on("message", async (ctx) => {
       saveUsers(users);
       // show profile preview and confirmation as before...
       const profileText = `• Ім'я: ${user.name}\n• Вік: ${user.age}\n• Місто: ${user.city}\n\n• Про себе: ${user.description || "Не вказано"}`;
-      await ctx.replyWithPhoto(user.photos[0], { caption: profileText });
+      if (user.photos && user.photos[0]) {
+        await ctx.replyWithPhoto(user.photos[0], { caption: profileText });
+      } else {
+        await ctx.reply(profileText);
+      }
       return ctx.reply("Ось так виглядає ваш профіль. Все правильно?", {
         reply_markup: {
           keyboard: [["Так, почати пошук", "Ні, редагувати"]],
