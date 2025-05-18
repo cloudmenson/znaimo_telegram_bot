@@ -43,13 +43,14 @@ bot.start(async (ctx) => {
     !user.searchGender ||
     !user.age ||
     !user.city ||
-    !user.photo;
+    !user.photos ||
+    user.photos.length === 0;
 
   if (profileIsIncomplete) {
     users[id] = {
       id,
       name: ctx.from.first_name || "Без імені",
-      photo: user?.photo || null,
+      photos: user?.photos || [],
       description: user?.description || "",
       liked: user?.liked || [],
       likedBy: user?.likedBy || [],
@@ -91,7 +92,7 @@ bot.hears("🚀 Почати створення анкети", async (ctx) => {
     users[id] = {
       id,
       name: ctx.from.first_name || "Без імені",
-      photo: null,
+      photos: [],
       description: "",
       liked: [],
       likedBy: [],
@@ -178,7 +179,9 @@ bot.hears("📱 Знайти анкету", (ctx) => {
   const user = users[id];
 
   if (!user) return ctx.reply("⚠️ Спочатку напиши /start");
-  if (!user.photo) return ctx.reply("📷 Завантаж фото спочатку.");
+  if (!user.photos || user.photos.length === 0) {
+    return ctx.reply("📷 Завантажте хоча б 1 фото через редагування профілю, щоб шукати анкети.");
+  }
   if (!user.gender || !user.searchGender) {
     return ctx.reply("👤 Обери свою стать та кого шукаєш через /start");
   }
@@ -187,16 +190,37 @@ bot.hears("📱 Знайти анкету", (ctx) => {
       "🔒 Ви переглянули 50 анкет. 💎 Купи преміум у іншого бота."
     );
 
-  const target = getRandomUser(id, users);
-  if (!target) return ctx.reply("Немає анкет для перегляду 😢");
+  // Збираємо кандидатів
+  const allCandidates = Object.values(users).filter(u => {
+    if (u.id === id) return false;
+    if (!u.photos || u.photos.length === 0) return false;
+    if (!u.gender) return false;
+    if (user.searchGender !== "any" && u.gender !== user.searchGender) return false;
+    if (u.age < (user.minAge || 14) || u.age > (user.maxAge || 99)) return false;
+    return true;
+  });
+
+  if (allCandidates.length === 0) {
+    return ctx.reply("😔 На жаль, поки немає доступних анкет для перегляду.");
+  }
+
+  // Сортуємо: спочатку ті, що з вашого міста
+  const sameCity = allCandidates.filter(u => u.city === user.city);
+  const otherCity = allCandidates.filter(u => u.city !== user.city);
+  const sorted = [...sameCity, ...otherCity];
+
+  // Обираємо кандидата по черзі
+  const index = user.views % sorted.length;
+  const target = sorted[index];
 
   users[id].views += 1;
-  users[id].lastSeenId = target.id; // Зберігаємо останню переглянуту анкету
+  users[id].lastSeenId = target.id;
   saveUsers(users);
 
+  // Відправка анкети
   const caption = `👤 ${target.name}\n📝 ${target.description || "Опис відсутній"}`;
-  if (target.photo) {
-    ctx.replyWithPhoto(target.photo, {
+  if (target.photos && target.photos[0]) {
+    ctx.replyWithPhoto(target.photos[0], {
       caption,
       reply_markup: {
         keyboard: [
@@ -289,11 +313,7 @@ bot.on("message", async (ctx) => {
       saveUsers(users);
       // show profile preview and confirmation as before...
       const profileText = `• Ім'я: ${user.name}\n• Вік: ${user.age}\n• Місто: ${user.city}\n\n• Про себе: ${user.description || "Не вказано"}`;
-      if (user.photo) {
-        await ctx.replyWithPhoto(user.photo, { caption: profileText });
-      } else {
-        await ctx.reply(profileText);
-      }
+      await ctx.replyWithPhoto(user.photos[0], { caption: profileText });
       return ctx.reply("Ось так виглядає ваш профіль. Все правильно?", {
         reply_markup: {
           keyboard: [["Так, почати пошук", "Ні, редагувати"]],
@@ -315,13 +335,45 @@ bot.on("photo", async (ctx) => {
   const photoArray = ctx.message.photo;
   const photo = photoArray[photoArray.length - 1]; // найкраща якість
   const fileId = photo.file_id;
-  users[id].photo = fileId;
+  const photos = users[id].photos || [];
+  if (photos.length >= 3) {
+    return ctx.reply("📸 Ви вже додали 3 фото. Натисніть ✅ Завершити додавання фото.", {
+      reply_markup: {
+        keyboard: [["✅ Завершити додавання фото"]],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+      },
+    });
+  }
+  photos.push(fileId);
+  users[id].photos = photos;
   saveUsers(users);
-  ctx.reply("📸 Фото збережено. Якщо більше нічого не хочеш додати — натисни кнопку нижче 👇", {
+  const count = photos.length;
+  const buttons = count < 3
+    ? [["📸 Надіслати ще фото"], ["✅ Завершити додавання фото"]]
+    : [["✅ Завершити додавання фото"]];
+  ctx.reply(`📷 Фото збережено (${count}/3)`, {
+    reply_markup: { keyboard: buttons, resize_keyboard: true, one_time_keyboard: true },
+  });
+});
+
+bot.hears("📸 Надіслати ще фото", ctx => {
+  ctx.reply("🔄 Надішліть наступне фото (до 3).");
+});
+bot.hears("✅ Завершити додавання фото", ctx => {
+  const users = loadUsers();
+  const user = users[String(ctx.from.id)];
+  if (!user || !user.photos || user.photos.length === 0) {
+    return ctx.reply("⚠️ Завантажте хоча б 1 фото, щоб продовжити.");
+  }
+  ctx.reply("✅ Фото збережено! Продовжимо.", {
     reply_markup: {
-      keyboard: [["✅ Це все, зберегти фото 🤖"]],
+      keyboard: [
+        ["📱 Знайти анкету", "📝 Редагувати анкету"],
+        ["👀 Хто мене лайкнув", "👤 Мій профіль"],
+      ],
       resize_keyboard: true,
-      one_time_keyboard: true,
+      one_time_keyboard: false,
     },
   });
 });
@@ -330,19 +382,17 @@ bot.hears("👤 Мій профіль", (ctx) => {
   const users = loadUsers();
   const id = String(ctx.from.id);
   const u = users[id];
-  if (!u || !u.photo)
+  if (!u || !u.photos || u.photos.length === 0)
     return ctx.reply("⚠️ Профіль не знайдено. Почни з /start");
 
-  if (u.photo) {
-    ctx.replyWithPhoto(u.photo, {
-      caption: `👤 ${u.name}\n📝 ${
-        u.description || "Опис відсутній"
-      }\n👁 Переглядів: ${u.views}`,
-    });
+  const profileCaption = `👤 ${u.name}\n📝 ${
+    u.description || "Опис відсутній"
+  }\n👁 Переглядів: ${u.views}`;
+
+  if (u.photos && u.photos[0]) {
+    ctx.replyWithPhoto(u.photos[0], { caption: profileCaption });
   } else {
-    ctx.reply(`👤 ${u.name}\n📝 ${
-      u.description || "Опис відсутній"
-    }\n👁 Переглядів: ${u.views}`);
+    ctx.reply(profileCaption);
   }
 });
 
@@ -373,12 +423,10 @@ bot.hears("👀 Хто мене лайкнув", (ctx) => {
 
   unseenLikers.forEach((uid) => {
     const liker = users[uid];
-    if (liker?.photo) {
-      ctx.replyWithPhoto(liker.photo, {
+    if (liker?.photos && liker.photos[0]) {
+      ctx.replyWithPhoto(liker.photos[0], {
         caption: `• Ім'я: ${liker.name}\n• Вік: ${liker.age}\n• Місто: ${liker.city || "Не вказано"}\n• Про себе: ${liker.description || "—"}`,
       });
-    } else {
-      ctx.reply(`• Ім'я: ${liker.name}\n• Вік: ${liker.age}\n• Місто: ${liker.city || "Не вказано"}\n• Про себе: ${liker.description || "—"}`);
     }
   });
 });
@@ -465,7 +513,7 @@ bot.hears("✅ Це все, зберегти фото 🤖", (ctx) => {
   const users = loadUsers();
   const id = String(ctx.from.id);
   const user = users[id];
-  if (!user || !user.gender || !user.searchGender || !user.photo) {
+  if (!user || !user.gender || !user.searchGender || !user.photos || user.photos.length === 0) {
     return ctx.reply("⚠️ Спочатку потрібно завершити заповнення анкети через /start");
   }
   ctx.reply("✅ Анкета збережена! Ви можете переглядати інших:", {
@@ -532,7 +580,7 @@ function getRandomUser(currentUserId, users) {
   const currentUser = users[currentUserId];
   const candidates = Object.values(users).filter(user => {
     if (user.id === currentUserId) return false;
-    if (!user.photo) return false;
+    if (!user.photos || user.photos.length === 0) return false;
     if (!user.gender) return false;
     if (currentUser.searchGender !== "any" && user.gender !== currentUser.searchGender) return false;
     if (user.age < (currentUser.minAge || 14)) return false;
