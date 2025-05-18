@@ -64,20 +64,20 @@ bot.start(async (ctx) => {
     };
     saveUsers(users);
 
-    return ctx.reply("🔷 Щоб почати — натисни кнопку нижче:", {
+    return ctx.reply("Щоб почати, натисніть кнопку нижче:", {
       reply_markup: {
-        keyboard: [["🚀 Почати створення анкети"]],
+        keyboard: [["Почати створення анкети"]],
         resize_keyboard: true,
         one_time_keyboard: true,
       },
     });
   }
 
-  ctx.reply("✅ Тепер можете переглядати анкети та спілкуватись:", {
+  ctx.reply("Тепер ви можете переглядати анкети та спілкуватися:", {
     reply_markup: {
       keyboard: [
-        ["📱 Знайти анкету", "📝 Редагувати анкету"],
-        ["👀 Хто мене лайкнув", "👤 Мій профіль"],
+        ["Знайти анкету", "Редагувати анкету"],
+        ["Хто мене лайкнув", "Мій профіль"],
       ],
       resize_keyboard: true,
       one_time_keyboard: false,
@@ -85,7 +85,7 @@ bot.start(async (ctx) => {
   });
 });
 
-bot.hears("🚀 Почати створення анкети", async (ctx) => {
+bot.hears("Почати створення анкети", async (ctx) => {
   const users = loadUsers();
   const id = String(ctx.from.id);
   if (!users[id]) {
@@ -106,7 +106,7 @@ bot.hears("🚀 Почати створення анкети", async (ctx) => {
   }
 
   if (!users[id].gender) {
-    return ctx.reply("👤 Обери свою стать:", {
+    return ctx.reply("Оберіть свою стать:", {
       reply_markup: {
         keyboard: [["🚹 Я хлопець", "🚺 Я дівчина"]],
         resize_keyboard: true,
@@ -116,7 +116,7 @@ bot.hears("🚀 Почати створення анкети", async (ctx) => {
   }
 
   if (!users[id].searchGender) {
-    return ctx.reply("👀 Кого хочеш знайти?", {
+    return ctx.reply("Кого ви шукаєте?", {
       reply_markup: {
         keyboard: [["Хлопців", "Дівчат", "Будь кого"]],
         resize_keyboard: true,
@@ -125,11 +125,11 @@ bot.hears("🚀 Почати створення анкети", async (ctx) => {
     });
   }
 
-  ctx.reply("✅ Тепер можете переглядати анкети та спілкуватись:", {
+  ctx.reply("Тепер ви можете переглядати анкети та спілкуватися:", {
     reply_markup: {
       keyboard: [
-        ["📱 Знайти анкету", "📝 Редагувати анкету"],
-        ["👀 Хто мене лайкнув", "👤 Мій профіль"],
+        ["Знайти анкету", "Редагувати анкету"],
+        ["Хто мене лайкнув", "Мій профіль"],
       ],
       resize_keyboard: true,
       one_time_keyboard: false,
@@ -145,7 +145,7 @@ bot.hears(["🚹 Я хлопець", "🚺 Я дівчина"], (ctx) => {
   const isMale = ctx.message.text.includes("хлопець");
   users[id].gender = isMale ? "male" : "female";
   saveUsers(users);
-  ctx.reply("👀 Кого хочеш знайти?", {
+  ctx.reply("Кого ви шукаєте?", {
     reply_markup: {
       keyboard: [["Хлопців", "Дівчат", "Будь кого"]],
       resize_keyboard: true,
@@ -168,83 +168,49 @@ bot.hears(["Хлопців", "Дівчат", "Будь кого"], (ctx) => {
   }
   users[id].stage = "minAge";
   saveUsers(users);
-  ctx.reply("🔢 Введіть мінімальний вік анкет, які будуть вам траплятись в пошуку та яким буде відображатись ваша анкета:", {
+  ctx.reply("Вкажіть мінімальний вік анкет для пошуку:", {
     reply_markup: { force_reply: true },
   });
 });
 
-bot.hears("📱 Знайти анкету", (ctx) => {
+bot.hears("Знайти анкету", (ctx) => {
   const users = loadUsers();
   const id = String(ctx.from.id);
   const user = users[id];
 
-  if (!user) return ctx.reply("⚠️ Спочатку напиши /start");
+  if (!user) return ctx.reply("Спочатку напишіть /start");
   if (!user.photos || user.photos.length === 0) {
-    return ctx.reply("📷 Завантажте хоча б 1 фото через редагування профілю, щоб шукати анкети.");
+    return ctx.reply("Завантажте хоча б одне фото через редагування профілю, щоб шукати анкети.");
   }
   if (!user.gender || !user.searchGender) {
-    return ctx.reply("👤 Обери свою стать та кого шукаєш через /start");
+    return ctx.reply("Оберіть свою стать та кого шукаєте через /start");
   }
   if (!user.isPremium && user.views >= 50)
     return ctx.reply(
-      "🔒 Ви переглянули 50 анкет. 💎 Купи преміум у іншого бота."
+      "Ви переглянули 50 анкет. Придбайте преміум у іншого бота."
     );
 
-  // Збираємо кандидатів
-  const allCandidates = Object.values(users).filter(u => {
-    if (u.id === id) return false;
-    if (!u.photos || u.photos.length === 0) return false;
-    if (!u.gender) return false;
-    if (user.searchGender !== "any" && u.gender !== user.searchGender) return false;
-    if (u.age < (user.minAge || 14) || u.age > (user.maxAge || 99)) return false;
-    return true;
-  });
-
-  if (allCandidates.length === 0) {
-    return ctx.reply("😔 На жаль, поки немає доступних анкет для перегляду.");
-  }
-
-  // Сортуємо: спочатку ті, що з вашого міста
-  const sameCity = allCandidates.filter(u => u.city === user.city);
-  const otherCity = allCandidates.filter(u => u.city !== user.city);
-  const sorted = [...sameCity, ...otherCity];
-
-  // Обираємо кандидата по черзі
-  const index = user.views % sorted.length;
-  const target = sorted[index];
+  const target = getRandomUser(id, users);
+  if (!target) return ctx.reply("Немає анкет для перегляду");
 
   users[id].views += 1;
-  users[id].lastSeenId = target.id;
+  users[id].lastSeenId = target.id; // Зберігаємо останню переглянуту анкету
   saveUsers(users);
 
-  // Відправка анкети
-  const caption = `👤 ${target.name}\n📝 ${target.description || "Опис відсутній"}`;
-  if (target.photos && target.photos[0]) {
-    ctx.replyWithPhoto(target.photos[0], {
-      caption,
-      reply_markup: {
-        keyboard: [
-          ["💘", "💌", "❌"],
-          ["⚙️ Налаштування"],
-        ],
-        resize_keyboard: true,
-      },
-    });
-  } else {
-    ctx.reply(caption, {
-      reply_markup: {
-        keyboard: [
-          ["💘", "💌", "❌"],
-          ["⚙️ Налаштування"],
-        ],
-        resize_keyboard: true,
-      },
-    });
-  }
+  ctx.replyWithPhoto(target.photos[0], {
+    caption: `${target.name}\n${target.description || "Опис відсутній"}`,
+    reply_markup: {
+      keyboard: [
+        ["💘", "💌", "❌"],
+        ["⚙️ Налаштування"],
+      ],
+      resize_keyboard: true,
+    },
+  });
 });
 
-bot.hears("📝 Редагувати анкету", async (ctx) => {
-  await ctx.reply("✏️ Введи опис для свого профілю:", {
+bot.hears("Редагувати анкету", async (ctx) => {
+  await ctx.reply("Введіть опис для вашого профілю:", {
     reply_markup: {
       force_reply: true,
       selective: true,
@@ -264,11 +230,14 @@ bot.on("message", async (ctx) => {
     ctx.message &&
     ctx.message.text &&
     ctx.message.reply_to_message &&
-    ctx.message.reply_to_message.text === "✏️ Введи опис для свого профілю:"
+    (
+      ctx.message.reply_to_message.text === "✏️ Введи опис для свого профілю:" ||
+      ctx.message.reply_to_message.text === "Введіть опис для вашого профілю:"
+    )
   ) {
     user.description = ctx.message.text;
     saveUsers(users);
-    return ctx.reply("📝 Опис збережено!");
+    return ctx.reply("Опис збережено!");
   }
 
   if (!user.stage) return;
@@ -278,52 +247,60 @@ bot.on("message", async (ctx) => {
     case "minAge": {
       const age = parseInt(text, 10);
       if (isNaN(age) || age < 14 || age > 99) {
-        return ctx.reply("🔴 Вік повинен бути в межах 14–99 років.\nВведіть правильне значення.");
+        return ctx.reply("Вік повинен бути від 14 до 99 років. Введіть правильне значення.");
       }
       user.minAge = age;
       user.stage = "maxAge";
       saveUsers(users);
-      return ctx.reply("🔢 Введіть максимальний вік анкет, які будуть вам траплятись в пошуку та яким буде відображатись ваша анкета:", {
+      return ctx.reply("Вкажіть максимальний вік анкет для пошуку:", {
         reply_markup: { force_reply: true },
       });
     }
     case "maxAge": {
       const age = parseInt(text, 10);
       if (isNaN(age) || age < 14 || age > 99 || age <= user.minAge) {
-        return ctx.reply("🔴 Вік повинен бути в межах 14–99 років і більшим за мінімальний.\nВведіть правильне значення.");
+        return ctx.reply("Вік повинен бути від 14 до 99 років і більшим за мінімальний. Введіть правильне значення.");
       }
       user.maxAge = age;
       user.stage = "age";
       saveUsers(users);
-      return ctx.reply("🎂 Скільки вам років?", { reply_markup: { force_reply: true } });
+      return ctx.reply("Скільки вам років?", { reply_markup: { force_reply: true } });
     }
     case "age": {
       const age = parseInt(text, 10);
       if (isNaN(age) || age < 14 || age > 99) {
-        return ctx.reply("🔴 Вік повинен бути в межах 14–99 років.\nВведіть правильне значення.");
+        return ctx.reply("Вік повинен бути від 14 до 99 років. Введіть правильне значення.");
       }
       user.age = age;
       user.stage = "city";
       saveUsers(users);
-      return ctx.reply("🏙️ З якого ви міста?", { reply_markup: { force_reply: true } });
+      return ctx.reply("З якого ви міста?", { reply_markup: { force_reply: true } });
     }
     case "city": {
       user.city = text;
+      saveUsers(users);
+      user.stage = "photo";
+      ctx.reply("Завантажте від 1 до 3 фотографій для вашого профілю.", {
+        reply_markup: { force_reply: true, selective: true }
+      });
+      return;
+    }
+    case "description": {
+      user.description = text;
       user.stage = null;
       saveUsers(users);
-      // show profile preview and confirmation as before...
-      const profileText = `• Ім'я: ${user.name}\n• Вік: ${user.age}\n• Місто: ${user.city}\n\n• Про себе: ${user.description || "Не вказано"}`;
+      const profileText = `Ім'я: ${user.name}\nВік: ${user.age}\nМісто: ${user.city}\n\nПро себе: ${user.description || "не вказано"}`;
       if (user.photos && user.photos[0]) {
         await ctx.replyWithPhoto(user.photos[0], { caption: profileText });
       } else {
         await ctx.reply(profileText);
       }
-      return ctx.reply("Ось так виглядає ваш профіль. Все правильно?", {
+      return ctx.reply("Ваш профіль готовий. Почати пошук чи редагувати?", {
         reply_markup: {
-          keyboard: [["Так, почати пошук", "Ні, редагувати"]],
+          keyboard: [["Почати пошук", "Редагувати профіль"]],
           resize_keyboard: true,
-          one_time_keyboard: true,
-        },
+          one_time_keyboard: true
+        }
       });
     }
   }
@@ -333,65 +310,66 @@ bot.on("message", async (ctx) => {
 bot.on("photo", async (ctx) => {
   const users = loadUsers();
   const id = String(ctx.from.id);
-  if (!users[id]) {
-    return ctx.reply("⚠️ Спочатку напиши /start");
+  const user = users[id];
+  if (!user) {
+    return ctx.reply("Спочатку напишіть /start");
+  }
+  if (user.stage !== "photo") {
+    return;
   }
   const photoArray = ctx.message.photo;
-  const photo = photoArray[photoArray.length - 1]; // найкраща якість
+  const photo = photoArray[photoArray.length - 1];
   const fileId = photo.file_id;
-  const photos = users[id].photos || [];
+  const photos = user.photos || [];
   if (photos.length >= 3) {
-    return ctx.reply("📸 Ви вже додали 3 фото. Натисніть ✅ Завершити додавання фото.", {
+    return ctx.reply("Ви вже додали 3 фото. Введіть 'Готово' для завершення.", {
       reply_markup: {
-        keyboard: [["✅ Завершити додавання фото"]],
-        resize_keyboard: true,
-        one_time_keyboard: true,
-      },
+        force_reply: true,
+        selective: true
+      }
     });
   }
   photos.push(fileId);
-  users[id].photos = photos;
+  user.photos = photos;
   saveUsers(users);
-  const count = photos.length;
-  const buttons = count < 3
-    ? [["📸 Надіслати ще фото"], ["✅ Завершити додавання фото"]]
-    : [["✅ Завершити додавання фото"]];
-  ctx.reply(`📷 Фото збережено (${count}/3)`, {
-    reply_markup: { keyboard: buttons, resize_keyboard: true, one_time_keyboard: true },
-  });
-});
-
-bot.hears("📸 Надіслати ще фото", ctx => {
-  ctx.reply("🔄 Надішліть наступне фото (до 3).");
-});
-bot.hears("✅ Завершити додавання фото", ctx => {
-  const users = loadUsers();
-  const user = users[String(ctx.from.id)];
-  if (!user || !user.photos || user.photos.length === 0) {
-    return ctx.reply("⚠️ Завантажте хоча б 1 фото, щоб продовжити.");
+  if (photos.length < 3) {
+    user.stage = "photo";
+    ctx.reply(`Фото збережено (${photos.length}/3). Відправте ще фото або введіть 'Готово' для завершення.`, {
+      reply_markup: { force_reply: true, selective: true }
+    });
+  } else {
+    user.stage = "description";
+    ctx.reply("Введіть опис вашого профілю (необов’язково).", {
+      reply_markup: { force_reply: true, selective: true }
+    });
   }
-  ctx.reply("✅ Фото збережено! Продовжимо.", {
-    reply_markup: {
-      keyboard: [
-        ["📱 Знайти анкету", "📝 Редагувати анкету"],
-        ["👀 Хто мене лайкнув", "👤 Мій профіль"],
-      ],
-      resize_keyboard: true,
-      one_time_keyboard: false,
-    },
+});
+
+// Обробник тексту "Готово" під час фото-етапу
+bot.hears("Готово", (ctx) => {
+  const users = loadUsers();
+  const id = String(ctx.from.id);
+  const user = users[id];
+  if (!user || user.stage !== "photo" || !user.photos || user.photos.length === 0) {
+    return ctx.reply("Завантажте хоча б одне фото, щоб продовжити.");
+  }
+  user.stage = "description";
+  saveUsers(users);
+  ctx.reply("Введіть опис вашого профілю (необов’язково).", {
+    reply_markup: { force_reply: true, selective: true }
   });
 });
 
-bot.hears("👤 Мій профіль", (ctx) => {
+// Старі кнопки додавання фото більше не використовуються
+
+bot.hears("Мій профіль", (ctx) => {
   const users = loadUsers();
   const id = String(ctx.from.id);
   const u = users[id];
   if (!u || !u.photos || u.photos.length === 0)
-    return ctx.reply("⚠️ Профіль не знайдено. Почни з /start");
+    return ctx.reply("Профіль не знайдено. Почніть з /start");
 
-  const profileCaption = `👤 ${u.name}\n📝 ${
-    u.description || "Опис відсутній"
-  }\n👁 Переглядів: ${u.views}`;
+  const profileCaption = `${u.name}\n${u.description || "Опис відсутній"}\nПереглядів: ${u.views}`;
 
   if (u.photos && u.photos[0]) {
     ctx.replyWithPhoto(u.photos[0], { caption: profileCaption });
@@ -414,22 +392,22 @@ bot.command("likes", (ctx) => {
   ctx.reply(`Вас лайкнули: ${likedByNames}`);
 });
 
-bot.hears("👀 Хто мене лайкнув", (ctx) => {
+bot.hears("Хто мене лайкнув", (ctx) => {
   const users = loadUsers();
   const id = String(ctx.from.id);
   const user = users[id];
-  if (!user) return ctx.reply("⚠️ Спочатку напиши /start");
+  if (!user) return ctx.reply("Спочатку напишіть /start");
 
   const unseenLikers = (user.likedBy || []).filter((uid) => !user.liked.includes(uid));
   if (unseenLikers.length === 0) {
-    return ctx.reply("😢 Немає нових лайків.");
+    return ctx.reply("Немає нових лайків.");
   }
 
   unseenLikers.forEach((uid) => {
     const liker = users[uid];
     if (liker?.photos && liker.photos[0]) {
       ctx.replyWithPhoto(liker.photos[0], {
-        caption: `• Ім'я: ${liker.name}\n• Вік: ${liker.age}\n• Місто: ${liker.city || "Не вказано"}\n• Про себе: ${liker.description || "—"}`,
+        caption: `Ім'я: ${liker.name}\nВік: ${liker.age}\nМісто: ${liker.city || "Не вказано"}\nПро себе: ${liker.description || "—"}`,
       });
     }
   });
@@ -532,23 +510,23 @@ bot.hears("✅ Це все, зберегти фото 🤖", (ctx) => {
   });
 });
 
-(bot.hears("Так, почати пошук", (ctx) => {
-  ctx.reply("✅ Анкета збережена! Ви можете переглядати інших:", {
+bot.hears("Почати пошук", (ctx) => {
+  ctx.reply("Анкета збережена! Ви можете переглядати інших:", {
     reply_markup: {
       keyboard: [
-        ["📱 Знайти анкету", "📝 Редагувати анкету"],
-        ["👀 Хто мене лайкнув", "👤 Мій профіль"],
+        ["Знайти анкету", "Редагувати анкету"],
+        ["Хто мене лайкнув", "Мій профіль"],
       ],
       resize_keyboard: true,
       one_time_keyboard: false,
     },
   });
-}));
+});
 
-bot.hears("Ні, редагувати", (ctx) => {
-  ctx.reply("🔁 Обери, що хочеш змінити:", {
+bot.hears("Редагувати профіль", (ctx) => {
+  ctx.reply("Оберіть, що хочете змінити:", {
     reply_markup: {
-      keyboard: [["📝 Редагувати анкету"]],
+      keyboard: [["Редагувати анкету"]],
       resize_keyboard: true,
       one_time_keyboard: true,
     },
