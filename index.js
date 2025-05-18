@@ -1,3 +1,4 @@
+const express = require("express");
 const { Telegraf, Markup } = require("telegraf");
 const fs = require("fs");
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -484,7 +485,21 @@ bot.on("text", (ctx) => {
       type: "commands",
     },
   });
-  bot.launch();
+
+  const app = express();
+  app.use(bot.webhookCallback("/"));
+  app.get("/", (_, res) => res.send("🤖 Znaimo Bot is running."));
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server listening on port ${PORT}`);
+  });
+
+  bot.launch({
+    webhook: {
+      domain: "https://telegram-dating-bot-2k8n.onrender.com",
+      port: PORT,
+    },
+  });
 })();
 
 (bot.hears("Так, почати пошук", (ctx) => {
