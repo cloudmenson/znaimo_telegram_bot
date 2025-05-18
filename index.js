@@ -281,7 +281,11 @@ bot.on("message", async (ctx) => {
       saveUsers(users);
       user.stage = "photo";
       ctx.reply("Завантажте від 1 до 3 фотографій для вашого профілю.", {
-        reply_markup: { force_reply: true, selective: true }
+        reply_markup: {
+          keyboard: [["Вибрати фото", "Пропустити"]],
+          resize_keyboard: true,
+          one_time_keyboard: true
+        }
       });
       return;
     }
@@ -324,25 +328,56 @@ bot.on("photo", async (ctx) => {
   if (photos.length >= 3) {
     return ctx.reply("Ви вже додали 3 фото. Введіть 'Готово' для завершення.", {
       reply_markup: {
-        force_reply: true,
-        selective: true
+        keyboard: [["Готово"]],
+        resize_keyboard: true,
+        one_time_keyboard: true
       }
     });
   }
   photos.push(fileId);
   user.photos = photos;
   saveUsers(users);
-  if (photos.length < 3) {
-    user.stage = "photo";
-    ctx.reply(`Фото збережено (${photos.length}/3). Відправте ще фото або введіть 'Готово' для завершення.`, {
-      reply_markup: { force_reply: true, selective: true }
-    });
-  } else {
-    user.stage = "description";
-    ctx.reply("Введіть опис вашого профілю (необов’язково).", {
-      reply_markup: { force_reply: true, selective: true }
+  const count = user.photos.length;
+  const buttons = count < 3
+    ? [["Вибрати фото", "Готово"]]
+    : [["Готово"]];
+  ctx.reply(`Фото збережено (${count}/3).`, {
+    reply_markup: {
+      keyboard: buttons,
+      resize_keyboard: true,
+      one_time_keyboard: true
+    }
+  });
+});
+bot.hears("Вибрати фото", (ctx) => {
+  const users = loadUsers();
+  const id = String(ctx.from.id);
+  const user = users[id];
+  if (!user || user.stage !== "photo") return;
+  ctx.reply("Надішліть фото.", {
+    reply_markup: { remove_keyboard: true }
+  });
+});
+
+bot.hears("Пропустити", (ctx) => {
+  const users = loadUsers();
+  const id = String(ctx.from.id);
+  const user = users[id];
+  if (!user || user.stage !== "photo") return;
+  if (!user.photos || user.photos.length === 0) {
+    return ctx.reply("Завантажте хоча б одне фото або оберіть знову.", {
+      reply_markup: {
+        keyboard: [["Вибрати фото", "Пропустити"]],
+        resize_keyboard: true,
+        one_time_keyboard: true
+      }
     });
   }
+  user.stage = "description";
+  saveUsers(users);
+  ctx.reply("Введіть опис вашого профілю (необов’язково).", {
+    reply_markup: { force_reply: true }
+  });
 });
 
 // Обробник тексту "Готово" під час фото-етапу
