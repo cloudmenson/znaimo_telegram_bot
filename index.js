@@ -45,6 +45,14 @@ bot.start(async (ctx) => {
     }
   );
 
+  await ctx.reply("🔷 Щоб почати — натисни кнопку нижче:", {
+    reply_markup: {
+      keyboard: [["🚀 Почати створення анкети"]],
+      resize_keyboard: true,
+      one_time_keyboard: true,
+    },
+  });
+
   const users = loadUsers();
   const id = String(ctx.from.id);
   if (!users[id]) {
@@ -89,6 +97,57 @@ bot.start(async (ctx) => {
       },
     });
   }
+  ctx.reply("✅ Тепер можете переглядати анкети та спілкуватись:", {
+    reply_markup: {
+      keyboard: [
+        ["📱 Знайти анкету", "📝 Редагувати анкету"],
+        ["👀 Хто мене лайкнув", "👤 Мій профіль"],
+      ],
+      resize_keyboard: true,
+      one_time_keyboard: false,
+    },
+  });
+});
+
+bot.hears("🚀 Почати створення анкети", async (ctx) => {
+  const users = loadUsers();
+  const id = String(ctx.from.id);
+  if (!users[id]) {
+    users[id] = {
+      id,
+      name: ctx.from.first_name || "Без імені",
+      photo: null,
+      description: "",
+      liked: [],
+      likedBy: [],
+      views: 0,
+      isPremium: false,
+      gender: null,
+      searchGender: null,
+    };
+    saveUsers(users);
+  }
+
+  if (!users[id].gender) {
+    return ctx.reply("👤 Обери свою стать:", {
+      reply_markup: {
+        keyboard: [["🚹 Я хлопець", "🚺 Я дівчина"]],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+      },
+    });
+  }
+
+  if (!users[id].searchGender) {
+    return ctx.reply("👀 Кого хочеш знайти?", {
+      reply_markup: {
+        keyboard: [["Хлопців", "Дівчат", "Будь кого"]],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+      },
+    });
+  }
+
   ctx.reply("✅ Тепер можете переглядати анкети та спілкуватись:", {
     reply_markup: {
       keyboard: [
@@ -372,7 +431,7 @@ bot.on("text", (ctx) => {
   const user = users[id];
   if (!user) return;
 
-  if (ctx.message.reply_to_message?.text?.includes("мінімальний вік")) {
+  if (ctx.message.reply_to_message?.text?.includes("Введіть мінімальний вік анкет")) {
     const age = parseInt(text);
     if (isNaN(age) || age < 14 || age > 99) {
       return ctx.reply("🔴 Вік повинен бути в межах 14–99 років.\nВведіть правильне значення.");
@@ -384,7 +443,7 @@ bot.on("text", (ctx) => {
     });
   }
 
-  if (ctx.message.reply_to_message?.text?.includes("максимальний вік")) {
+  if (ctx.message.reply_to_message?.text?.includes("Введіть максимальний вік анкет")) {
     const age = parseInt(text);
     if (isNaN(age) || age < 14 || age > 99 || age <= user.minAge) {
       return ctx.reply("🔴 Вік повинен бути в межах 14–99 років і більшим за мінімальний.\nВведіть правильне значення.");
