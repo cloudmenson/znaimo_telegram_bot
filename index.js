@@ -30,7 +30,21 @@ bot.catch((err, ctx) => {
   console.error("Error: ", err);
 });
 
-bot.start((ctx) => {
+bot.start(async (ctx) => {
+  await ctx.replyWithPhoto(
+    { source: "./img/welcome-logo.jpg" },
+    {
+      caption: `👋 Вітаємо в *Znaimo*!
+
+Це бот, який допоможе знайти людину для спілкування або серйозних стосунків. Щоб почати — створіть свою анкету.
+
+✨ Заповніть кілька простих питань, додайте фото, і почнімо подорож до нових знайомств!
+
+❤️ Ваша історія може початися просто зараз.`,
+      parse_mode: "Markdown",
+    }
+  );
+
   const users = loadUsers();
   const id = String(ctx.from.id);
   if (!users[id]) {
@@ -69,13 +83,13 @@ bot.start((ctx) => {
   if (!users[id].searchGender) {
     return ctx.reply("👀 Кого хочеш знайти?", {
       reply_markup: {
-        keyboard: [["👩 Дівчину", "👨 Хлопця"]],
+        keyboard: [["Хлопців", "Дівчат", "Будь кого"]],
         resize_keyboard: true,
         one_time_keyboard: true,
       },
     });
   }
-  ctx.reply("👋 Привіт! Готово до знайомств?", {
+  ctx.reply("✅ Тепер можете переглядати анкети та спілкуватись:", {
     reply_markup: {
       keyboard: [
         ["📱 Знайти анкету", "📝 Редагувати анкету"],
@@ -97,7 +111,7 @@ bot.hears(["🚹 Я хлопець", "🚺 Я дівчина"], (ctx) => {
   saveUsers(users);
   ctx.reply("👀 Кого хочеш знайти?", {
     reply_markup: {
-      keyboard: [["👩 Дівчину", "👨 Хлопця"]],
+      keyboard: [["Хлопців", "Дівчат", "Будь кого"]],
       resize_keyboard: true,
       one_time_keyboard: true,
     },
@@ -105,22 +119,20 @@ bot.hears(["🚹 Я хлопець", "🚺 Я дівчина"], (ctx) => {
 });
 
 // Вибір кого шукати
-bot.hears(["👩 Дівчину", "👨 Хлопця"], (ctx) => {
+bot.hears(["Хлопців", "Дівчат", "Будь кого"], (ctx) => {
   const users = loadUsers();
   const id = String(ctx.from.id);
   if (!users[id]) return;
-  const lookingForFemale = ctx.message.text.includes("Дівчину");
-  users[id].searchGender = lookingForFemale ? "female" : "male";
+  if (ctx.message.text === "Дівчат") {
+    users[id].searchGender = "female";
+  } else if (ctx.message.text === "Хлопців") {
+    users[id].searchGender = "male";
+  } else {
+    users[id].searchGender = "any";
+  }
   saveUsers(users);
-  ctx.reply("✅ Готово! Тепер можеш переглядати анкети 👇", {
-    reply_markup: {
-      keyboard: [
-        ["📱 Знайти анкету", "📝 Редагувати анкету"],
-        ["👀 Хто мене лайкнув", "👤 Мій профіль"],
-      ],
-      resize_keyboard: true,
-      one_time_keyboard: false,
-    },
+  ctx.reply("🔢 Введіть мінімальний вік анкет, які будуть вам траплятись в пошуку та яким буде відображатись ваша анкета:", {
+    reply_markup: { force_reply: true },
   });
 });
 
@@ -143,14 +155,18 @@ bot.hears("📱 Знайти анкету", (ctx) => {
   if (!target) return ctx.reply("Немає анкет для перегляду 😢");
 
   users[id].views += 1;
+  users[id].lastSeenId = target.id; // Зберігаємо останню переглянуту анкету
   saveUsers(users);
 
   ctx.replyWithPhoto(target.photo, {
     caption: `👤 ${target.name}\n📝 ${target.description || "Опис відсутній"}`,
-    ...Markup.inlineKeyboard([
-      [Markup.button.callback("❤️ Лайк", `like_${target.id}`)],
-      [Markup.button.callback("❌ Пропустити", `skip_${target.id}`)],
-    ]),
+    reply_markup: {
+      keyboard: [
+        ["💘", "💌", "❌"],
+        ["⚙️ Налаштування"],
+      ],
+      resize_keyboard: true,
+    },
   });
 });
 
@@ -182,6 +198,27 @@ bot.on("message", async (ctx) => {
   }
 });
 
+// Новий обробник для фото
+bot.on("photo", async (ctx) => {
+  const users = loadUsers();
+  const id = String(ctx.from.id);
+  if (!users[id]) {
+    return ctx.reply("⚠️ Спочатку напиши /start");
+  }
+  const photoArray = ctx.message.photo;
+  const photo = photoArray[photoArray.length - 1]; // найкраща якість
+  const fileId = photo.file_id;
+  users[id].photo = fileId;
+  saveUsers(users);
+  ctx.reply("📸 Фото збережено. Якщо більше нічого не хочеш додати — натисни кнопку нижче 👇", {
+    reply_markup: {
+      keyboard: [["✅ Це все, зберегти фото 🤖"]],
+      resize_keyboard: true,
+      one_time_keyboard: true,
+    },
+  });
+});
+
 bot.hears("👤 Мій профіль", (ctx) => {
   const users = loadUsers();
   const id = String(ctx.from.id);
@@ -211,31 +248,182 @@ bot.command("likes", (ctx) => {
 });
 
 bot.hears("👀 Хто мене лайкнув", (ctx) => {
-  ctx.reply("🔜 У розробці. Скоро буде видно, хто тебе лайкнув 😉");
+  const users = loadUsers();
+  const id = String(ctx.from.id);
+  const user = users[id];
+  if (!user) return ctx.reply("⚠️ Спочатку напиши /start");
+
+  const unseenLikers = (user.likedBy || []).filter((uid) => !user.liked.includes(uid));
+  if (unseenLikers.length === 0) {
+    return ctx.reply("😢 Немає нових лайків.");
+  }
+
+  unseenLikers.forEach((uid) => {
+    const liker = users[uid];
+    if (liker?.photo) {
+      ctx.replyWithPhoto(liker.photo, {
+        caption: `• Ім'я: ${liker.name}\n• Вік: ${liker.age}\n• Місто: ${liker.city || "Не вказано"}\n• Про себе: ${liker.description || "—"}`,
+      });
+    }
+  });
 });
 
-bot.action(/like_(.+)/, (ctx) => {
+// bot.action(/like_(.+)/, (ctx) => {
+//   const users = loadUsers();
+//   const fromId = String(ctx.from.id);
+//   const toId = ctx.match[1];
+
+//   if (!users[toId] || !users[fromId])
+//     return ctx.reply("Користувач не знайдений.");
+
+//   users[fromId].liked.push(toId);
+//   users[toId].likedBy.push(fromId);
+//   saveUsers(users);
+
+//   ctx.reply("💘 Ти вподобав(ла) цього користувача!");
+//   // Повідомлення іншому користувачу
+//   bot.telegram.sendMessage(toId, `💌 Вас вподобав(ла) ${users[fromId].name}!`);
+
+//   ctx.deleteMessage().catch(() => {});
+// });
+
+// bot.action(/skip_(.+)/, (ctx) => {
+//   ctx.reply("⏭️ Пропущено.");
+//   ctx.deleteMessage().catch(() => {});
+// });
+
+bot.hears("💘", (ctx) => {
   const users = loadUsers();
   const fromId = String(ctx.from.id);
-  const toId = ctx.match[1];
+  const user = users[fromId];
+  const toId = user.lastSeenId;
 
-  if (!users[toId] || !users[fromId])
-    return ctx.reply("Користувач не знайдений.");
+  if (!toId || !users[toId]) {
+    return ctx.reply("⛔ Немає активної анкети.");
+  }
 
-  users[fromId].liked.push(toId);
-  users[toId].likedBy.push(fromId);
+  if (!user.liked.includes(toId)) {
+    user.liked.push(toId);
+  }
+  if (!users[toId].likedBy.includes(fromId)) {
+    users[toId].likedBy.push(fromId);
+  }
+
   saveUsers(users);
 
-  ctx.reply("💘 Ти вподобав(ла) цього користувача!");
   // Повідомлення іншому користувачу
-  bot.telegram.sendMessage(toId, `💌 Вас вподобав(ла) ${users[fromId].name}!`);
+  if (users[toId].liked.includes(fromId)) {
+    bot.telegram.sendMessage(toId, `💞 Ви збіглися з ${user.name}!`);
+    bot.telegram.sendMessage(fromId, `💞 Взаємний лайк з ${users[toId].name}!`);
+  } else {
+    bot.telegram.sendMessage(toId, `💌 Вас лайкнув(ла) ${user.name}`);
+  }
 
-  ctx.deleteMessage().catch(() => {});
+  ctx.reply("💘 Ви вподобали анкету!");
+  ctx.telegram.sendMessage(fromId, "📱 Наступна анкета:", {
+    reply_markup: {
+      keyboard: [["📱 Знайти анкету"]],
+      resize_keyboard: true,
+    },
+  });
 });
 
-bot.action(/skip_(.+)/, (ctx) => {
-  ctx.reply("⏭️ Пропущено.");
-  ctx.deleteMessage().catch(() => {});
+bot.hears("❌", (ctx) => {
+  ctx.reply("⏭️ Пропущено. Щоб побачити наступну анкету натисніть:", {
+    reply_markup: {
+      keyboard: [["📱 Знайти анкету"]],
+      resize_keyboard: true,
+    },
+  });
+});
+
+bot.hears("⚙️ Налаштування", (ctx) => {
+  ctx.reply("🔧 Що бажаєш змінити?", {
+    reply_markup: {
+      keyboard: [["📝 Редагувати анкету"]],
+      resize_keyboard: true,
+    },
+  });
+});
+
+bot.hears("✅ Це все, зберегти фото 🤖", (ctx) => {
+  const users = loadUsers();
+  const id = String(ctx.from.id);
+  const user = users[id];
+  if (!user || !user.gender || !user.searchGender || !user.photo) {
+    return ctx.reply("⚠️ Спочатку потрібно завершити заповнення анкети через /start");
+  }
+  ctx.reply("✅ Анкета збережена! Ви можете переглядати інших:", {
+    reply_markup: {
+      keyboard: [
+        ["📱 Знайти анкету", "📝 Редагувати анкету"],
+        ["👀 Хто мене лайкнув", "👤 Мій профіль"],
+      ],
+      resize_keyboard: true,
+      one_time_keyboard: false,
+    },
+  });
+});
+
+bot.on("text", (ctx) => {
+  const text = ctx.message.text;
+  const users = loadUsers();
+  const id = String(ctx.from.id);
+  const user = users[id];
+  if (!user) return;
+
+  if (ctx.message.reply_to_message?.text?.includes("мінімальний вік")) {
+    const age = parseInt(text);
+    if (isNaN(age) || age < 14 || age > 99) {
+      return ctx.reply("🔴 Вік повинен бути в межах 14–99 років.\nВведіть правильне значення.");
+    }
+    user.minAge = age;
+    saveUsers(users);
+    return ctx.reply("🔢 Введіть максимальний вік анкет, які будуть вам траплятись в пошуку та яким буде відображатись ваша анкета:", {
+      reply_markup: { force_reply: true },
+    });
+  }
+
+  if (ctx.message.reply_to_message?.text?.includes("максимальний вік")) {
+    const age = parseInt(text);
+    if (isNaN(age) || age < 14 || age > 99 || age <= user.minAge) {
+      return ctx.reply("🔴 Вік повинен бути в межах 14–99 років і більшим за мінімальний.\nВведіть правильне значення.");
+    }
+    user.maxAge = age;
+    saveUsers(users);
+    return ctx.reply("🎂 Скільки вам років?", {
+      reply_markup: { force_reply: true },
+    });
+  }
+
+  if (ctx.message.reply_to_message?.text?.includes("Скільки вам років")) {
+    const age = parseInt(text);
+    if (isNaN(age) || age < 14 || age > 99) {
+      return ctx.reply("🔴 Вік повинен бути в межах 14–99 років.\nВведіть правильне значення.");
+    }
+    user.age = age;
+    saveUsers(users);
+    return ctx.reply("🏙️ З якого ви міста?", {
+      reply_markup: { force_reply: true },
+    });
+  }
+
+  // Додаємо обробку відповіді на місто
+  if (ctx.message.reply_to_message?.text?.includes("міста")) {
+    user.city = text;
+    saveUsers(users);
+    const profileText = `• Ім'я: ${user.name}\n• Вік: ${user.age}\n• Місто: ${user.city}\n\n• Про себе: ${user.description || "Не вказано"}`;
+    ctx.replyWithPhoto(user.photo, {
+      caption: profileText,
+    });
+    return ctx.reply("Ось так виглядає ваш профіль. Все правильно?", {
+      reply_markup: {
+        keyboard: [["Так, почати пошук", "Ні, редагувати"]],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+      },
+    });
+  }
 });
 
 (async () => {
@@ -247,3 +435,26 @@ bot.action(/skip_(.+)/, (ctx) => {
   ]);
   bot.launch();
 })();
+
+(bot.hears("Так, почати пошук", (ctx) => {
+  ctx.reply("✅ Анкета збережена! Ви можете переглядати інших:", {
+    reply_markup: {
+      keyboard: [
+        ["📱 Знайти анкету", "📝 Редагувати анкету"],
+        ["👀 Хто мене лайкнув", "👤 Мій профіль"],
+      ],
+      resize_keyboard: true,
+      one_time_keyboard: false,
+    },
+  });
+}));
+
+bot.hears("Ні, редагувати", (ctx) => {
+  ctx.reply("🔁 Обери, що хочеш змінити:", {
+    reply_markup: {
+      keyboard: [["📝 Редагувати анкету"]],
+      resize_keyboard: true,
+      one_time_keyboard: true,
+    },
+  });
+});
