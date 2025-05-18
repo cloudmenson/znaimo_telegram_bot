@@ -194,16 +194,29 @@ bot.hears("📱 Знайти анкету", (ctx) => {
   users[id].lastSeenId = target.id; // Зберігаємо останню переглянуту анкету
   saveUsers(users);
 
-  ctx.replyWithPhoto(target.photo, {
-    caption: `👤 ${target.name}\n📝 ${target.description || "Опис відсутній"}`,
-    reply_markup: {
-      keyboard: [
-        ["💘", "💌", "❌"],
-        ["⚙️ Налаштування"],
-      ],
-      resize_keyboard: true,
-    },
-  });
+  const caption = `👤 ${target.name}\n📝 ${target.description || "Опис відсутній"}`;
+  if (target.photo) {
+    ctx.replyWithPhoto(target.photo, {
+      caption,
+      reply_markup: {
+        keyboard: [
+          ["💘", "💌", "❌"],
+          ["⚙️ Налаштування"],
+        ],
+        resize_keyboard: true,
+      },
+    });
+  } else {
+    ctx.reply(caption, {
+      reply_markup: {
+        keyboard: [
+          ["💘", "💌", "❌"],
+          ["⚙️ Налаштування"],
+        ],
+        resize_keyboard: true,
+      },
+    });
+  }
 });
 
 bot.hears("📝 Редагувати анкету", async (ctx) => {
@@ -276,7 +289,11 @@ bot.on("message", async (ctx) => {
       saveUsers(users);
       // show profile preview and confirmation as before...
       const profileText = `• Ім'я: ${user.name}\n• Вік: ${user.age}\n• Місто: ${user.city}\n\n• Про себе: ${user.description || "Не вказано"}`;
-      await ctx.replyWithPhoto(user.photo, { caption: profileText });
+      if (user.photo) {
+        await ctx.replyWithPhoto(user.photo, { caption: profileText });
+      } else {
+        await ctx.reply(profileText);
+      }
       return ctx.reply("Ось так виглядає ваш профіль. Все правильно?", {
         reply_markup: {
           keyboard: [["Так, почати пошук", "Ні, редагувати"]],
@@ -316,11 +333,17 @@ bot.hears("👤 Мій профіль", (ctx) => {
   if (!u || !u.photo)
     return ctx.reply("⚠️ Профіль не знайдено. Почни з /start");
 
-  ctx.replyWithPhoto(u.photo, {
-    caption: `👤 ${u.name}\n📝 ${
+  if (u.photo) {
+    ctx.replyWithPhoto(u.photo, {
+      caption: `👤 ${u.name}\n📝 ${
+        u.description || "Опис відсутній"
+      }\n👁 Переглядів: ${u.views}`,
+    });
+  } else {
+    ctx.reply(`👤 ${u.name}\n📝 ${
       u.description || "Опис відсутній"
-    }\n👁 Переглядів: ${u.views}`,
-  });
+    }\n👁 Переглядів: ${u.views}`);
+  }
 });
 
 bot.command("likes", (ctx) => {
@@ -354,6 +377,8 @@ bot.hears("👀 Хто мене лайкнув", (ctx) => {
       ctx.replyWithPhoto(liker.photo, {
         caption: `• Ім'я: ${liker.name}\n• Вік: ${liker.age}\n• Місто: ${liker.city || "Не вказано"}\n• Про себе: ${liker.description || "—"}`,
       });
+    } else {
+      ctx.reply(`• Ім'я: ${liker.name}\n• Вік: ${liker.age}\n• Місто: ${liker.city || "Не вказано"}\n• Про себе: ${liker.description || "—"}`);
     }
   });
 });
