@@ -310,47 +310,57 @@ bot.on("message", async (ctx) => {
   }
 });
 
-// Новий обробник для фото
+// Новий обробник для фото (оновлений)
 bot.on("photo", async (ctx) => {
   const users = loadUsers();
   const id = String(ctx.from.id);
   const user = users[id];
-  if (!user) {
-    return ctx.reply("Спочатку напишіть /start");
-  }
-  if (user.stage !== "photo") {
-    return;
-  }
-  const photoArray = ctx.message.photo;
-  const photo = photoArray[photoArray.length - 1];
-  const fileId = photo.file_id;
-  const photos = user.photos || [];
-  if (photos.length >= 3) {
-    return ctx.reply("Ви вже додали 3 фото. Введіть 'Готово' для завершення.", {
+  if (!user) return ctx.reply("Спочатку напишіть /start");
+  if (user.stage !== "photo") return;
+
+  const fileId = ctx.message.photo.pop().file_id;
+  user.photos = user.photos || [];
+
+  // Prevent adding more than 3
+  if (user.photos.length >= 3) {
+    return ctx.reply("Ви вже додали 3 фото. Для продовження введіть 'Пропустити'.", {
       reply_markup: {
-        force_reply: true,
-        selective: true
+        keyboard: [["Пропустити"]],
+        resize_keyboard: true,
+        one_time_keyboard: true
       }
     });
   }
-  photos.push(fileId);
-  user.photos = photos;
+
+  // Add new photo
+  user.photos.push(fileId);
+  user.stage = "photo";
   saveUsers(users);
-  if (photos.length < 3) {
-    user.stage = "photo";
-    ctx.reply(`Фото збережено (${photos.length}/3). Відправте ще фото або введіть 'Готово' для завершення.`, {
-      reply_markup: { force_reply: true, selective: true }
+
+  const count = user.photos.length;
+  if (count < 3) {
+    ctx.reply(`Фото збережено (${count}/3). Хочете ще?`, {
+      reply_markup: {
+        keyboard: [["Додати фото", "Пропустити"]],
+        resize_keyboard: true,
+        one_time_keyboard: true
+      }
     });
   } else {
     user.stage = "description";
+    saveUsers(users);
     ctx.reply("Введіть опис вашого профілю (необов’язково).", {
-      reply_markup: { force_reply: true, selective: true }
+      reply_markup: {
+        keyboard: [["Пропустити опис"]],
+        resize_keyboard: true,
+        one_time_keyboard: true
+      }
     });
   }
 });
 
-// Обробник тексту "Готово" під час фото-етапу
-bot.hears("Готово", (ctx) => {
+// Обробник тексту "Пропустити" під час фото-етапу (залишаємо як є)
+bot.hears("Пропустити", (ctx) => {
   const users = loadUsers();
   const id = String(ctx.from.id);
   const user = users[id];
@@ -360,11 +370,42 @@ bot.hears("Готово", (ctx) => {
   user.stage = "description";
   saveUsers(users);
   ctx.reply("Введіть опис вашого профілю (необов’язково).", {
-    reply_markup: { force_reply: true, selective: true }
+    reply_markup: {
+      keyboard: [["Пропустити опис"]],
+      resize_keyboard: true,
+      one_time_keyboard: true
+    }
   });
 });
 
-// Старі кнопки додавання фото більше не використовуються
+// Додаємо обробник для "Пропустити опис"
+bot.hears("Пропустити опис", (ctx) => {
+  const users = loadUsers();
+  const id = String(ctx.from.id);
+  const user = users[id];
+  if (!user || user.stage !== "description") return;
+  user.description = "";
+  user.stage = null;
+  saveUsers(users);
+  ctx.reply("Ваш профіль готовий. Почати пошук чи редагувати?", {
+    reply_markup: {
+      keyboard: [["Почати пошук", "Редагувати профіль"]],
+      resize_keyboard: true,
+      one_time_keyboard: true
+    }
+  });
+});
+
+// Замість "Вибрати фото" використовуємо "Додати фото"
+bot.hears("Додати фото", (ctx) => {
+  const users = loadUsers();
+  const id = String(ctx.from.id);
+  const user = users[id];
+  if (!user || user.stage !== "photo") return;
+  ctx.reply("Надішліть фото.", {
+    reply_markup: { remove_keyboard: true }
+  });
+});
 
 bot.hears("Мій профіль", (ctx) => {
   const users = loadUsers();
