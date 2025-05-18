@@ -31,6 +31,45 @@ bot.catch((err, ctx) => {
 });
 
 bot.start(async (ctx) => {
+  const users = loadUsers();
+  const id = String(ctx.from.id);
+
+  const user = users[id];
+
+  const profileIsIncomplete =
+    !user ||
+    !user.gender ||
+    !user.searchGender ||
+    !user.age ||
+    !user.city ||
+    !user.photo;
+
+  if (profileIsIncomplete) {
+    users[id] = {
+      id,
+      name: ctx.from.first_name || "Без імені",
+      photo: user?.photo || null,
+      description: user?.description || "",
+      liked: user?.liked || [],
+      likedBy: user?.likedBy || [],
+      views: user?.views || 0,
+      isPremium: user?.isPremium || false,
+      gender: user?.gender || null,
+      searchGender: user?.searchGender || null,
+      age: user?.age || null,
+      city: user?.city || null,
+    };
+    saveUsers(users);
+
+    return ctx.reply("🔷 Щоб почати — натисни кнопку нижче:", {
+      reply_markup: {
+        keyboard: [["🚀 Почати створення анкети"]],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+      },
+    });
+  }
+
   await ctx.replyWithPhoto(
     { source: "./img/welcome-logo.jpg" },
     {
@@ -45,58 +84,6 @@ bot.start(async (ctx) => {
     }
   );
 
-  await ctx.reply("🔷 Щоб почати — натисни кнопку нижче:", {
-    reply_markup: {
-      keyboard: [["🚀 Почати створення анкети"]],
-      resize_keyboard: true,
-      one_time_keyboard: true,
-    },
-  });
-
-  const users = loadUsers();
-  const id = String(ctx.from.id);
-  if (!users[id]) {
-    users[id] = {
-      id,
-      name: ctx.from.first_name || "Без імені",
-      photo: null,
-      description: "",
-      liked: [],
-      likedBy: [],
-      views: 0,
-      isPremium: false,
-      gender: null,
-      searchGender: null,
-    };
-    saveUsers(users);
-    // Запитати стать
-    return ctx.reply("👤 Обери свою стать:", {
-      reply_markup: {
-        keyboard: [["🚹 Я хлопець", "🚺 Я дівчина"]],
-        resize_keyboard: true,
-        one_time_keyboard: true,
-      },
-    });
-  }
-  // Якщо користувач є, але ще не обрав стать або кого шукає
-  if (!users[id].gender) {
-    return ctx.reply("👤 Обери свою стать:", {
-      reply_markup: {
-        keyboard: [["🚹 Я хлопець", "🚺 Я дівчина"]],
-        resize_keyboard: true,
-        one_time_keyboard: true,
-      },
-    });
-  }
-  if (!users[id].searchGender) {
-    return ctx.reply("👀 Кого хочеш знайти?", {
-      reply_markup: {
-        keyboard: [["Хлопців", "Дівчат", "Будь кого"]],
-        resize_keyboard: true,
-        one_time_keyboard: true,
-      },
-    });
-  }
   ctx.reply("✅ Тепер можете переглядати анкети та спілкуватись:", {
     reply_markup: {
       keyboard: [
@@ -492,6 +479,11 @@ bot.on("text", (ctx) => {
     { command: "profile", description: "👤 Мій профіль" },
     { command: "edit", description: "📝 Редагувати анкету" },
   ]);
+  bot.telegram.setChatMenuButton({
+    menu_button: {
+      type: "commands",
+    },
+  });
   bot.launch();
 })();
 
