@@ -59,6 +59,7 @@ bot.start(async (ctx) => {
       searchGender: user?.searchGender || null,
       age: user?.age || null,
       city: user?.city || null,
+      stage: user?.stage || null,
     };
     saveUsers(users);
 
@@ -98,6 +99,7 @@ bot.hears("🚀 Почати створення анкети", async (ctx) => {
       isPremium: false,
       gender: null,
       searchGender: null,
+      stage: null,
     };
     saveUsers(users);
   }
@@ -163,6 +165,7 @@ bot.hears(["Хлопців", "Дівчат", "Будь кого"], (ctx) => {
   } else {
     users[id].searchGender = "any";
   }
+  users[id].stage = "minAge";
   saveUsers(users);
   ctx.reply("🔢 Введіть мінімальний вік анкет, які будуть вам траплятись в пошуку та яким буде відображатись ваша анкета:", {
     reply_markup: { force_reply: true },
@@ -214,20 +217,74 @@ bot.hears("📝 Редагувати анкету", async (ctx) => {
 
 // Обробка відповіді на force-reply для редагування анкети
 bot.on("message", async (ctx) => {
+  const users = loadUsers();
+  const id = String(ctx.from.id);
+  const user = users[id];
+  if (!user) return;
+
+  // Handle editing description
   if (
     ctx.message &&
     ctx.message.text &&
     ctx.message.reply_to_message &&
     ctx.message.reply_to_message.text === "✏️ Введи опис для свого профілю:"
   ) {
-    const users = loadUsers();
-    const id = String(ctx.from.id);
-    if (!users[id]) {
-      return ctx.reply("⚠️ Спочатку напиши /start");
-    }
-    users[id].description = ctx.message.text;
+    user.description = ctx.message.text;
     saveUsers(users);
     return ctx.reply("📝 Опис збережено!");
+  }
+
+  if (!user.stage) return;
+
+  const text = ctx.message.text.trim();
+  switch (user.stage) {
+    case "minAge": {
+      const age = parseInt(text, 10);
+      if (isNaN(age) || age < 14 || age > 99) {
+        return ctx.reply("🔴 Вік повинен бути в межах 14–99 років.\nВведіть правильне значення.");
+      }
+      user.minAge = age;
+      user.stage = "maxAge";
+      saveUsers(users);
+      return ctx.reply("🔢 Введіть максимальний вік анкет, які будуть вам траплятись в пошуку та яким буде відображатись ваша анкета:", {
+        reply_markup: { force_reply: true },
+      });
+    }
+    case "maxAge": {
+      const age = parseInt(text, 10);
+      if (isNaN(age) || age < 14 || age > 99 || age <= user.minAge) {
+        return ctx.reply("🔴 Вік повинен бути в межах 14–99 років і більшим за мінімальний.\nВведіть правильне значення.");
+      }
+      user.maxAge = age;
+      user.stage = "age";
+      saveUsers(users);
+      return ctx.reply("🎂 Скільки вам років?", { reply_markup: { force_reply: true } });
+    }
+    case "age": {
+      const age = parseInt(text, 10);
+      if (isNaN(age) || age < 14 || age > 99) {
+        return ctx.reply("🔴 Вік повинен бути в межах 14–99 років.\nВведіть правильне значення.");
+      }
+      user.age = age;
+      user.stage = "city";
+      saveUsers(users);
+      return ctx.reply("🏙️ З якого ви міста?", { reply_markup: { force_reply: true } });
+    }
+    case "city": {
+      user.city = text;
+      user.stage = null;
+      saveUsers(users);
+      // show profile preview and confirmation as before...
+      const profileText = `• Ім'я: ${user.name}\n• Вік: ${user.age}\n• Місто: ${user.city}\n\n• Про себе: ${user.description || "Не вказано"}`;
+      await ctx.replyWithPhoto(user.photo, { caption: profileText });
+      return ctx.reply("Ось так виглядає ваш профіль. Все правильно?", {
+        reply_markup: {
+          keyboard: [["Так, почати пошук", "Ні, редагувати"]],
+          resize_keyboard: true,
+          one_time_keyboard: true,
+        },
+      });
+    }
   }
 });
 
@@ -398,65 +455,27 @@ bot.hears("✅ Це все, зберегти фото 🤖", (ctx) => {
   });
 });
 
-bot.on("text", (ctx) => {
-  const text = ctx.message.text;
-  const users = loadUsers();
-  const id = String(ctx.from.id);
-  const user = users[id];
-  if (!user) return;
+(bot.hears("Так, почати пошук", (ctx) => {
+  ctx.reply("✅ Анкета збережена! Ви можете переглядати інших:", {
+    reply_markup: {
+      keyboard: [
+        ["📱 Знайти анкету", "📝 Редагувати анкету"],
+        ["👀 Хто мене лайкнув", "👤 Мій профіль"],
+      ],
+      resize_keyboard: true,
+      one_time_keyboard: false,
+    },
+  });
+}));
 
-  if (ctx.message.reply_to_message?.text?.includes("Введіть мінімальний вік анкет")) {
-    const age = parseInt(text);
-    if (isNaN(age) || age < 14 || age > 99) {
-      return ctx.reply("🔴 Вік повинен бути в межах 14–99 років.\nВведіть правильне значення.");
-    }
-    user.minAge = age;
-    saveUsers(users);
-    return ctx.reply("🔢 Введіть максимальний вік анкет, які будуть вам траплятись в пошуку та яким буде відображатись ваша анкета:", {
-      reply_markup: { force_reply: true },
-    });
-  }
-
-  if (ctx.message.reply_to_message?.text?.includes("Введіть максимальний вік анкет")) {
-    const age = parseInt(text);
-    if (isNaN(age) || age < 14 || age > 99 || age <= user.minAge) {
-      return ctx.reply("🔴 Вік повинен бути в межах 14–99 років і більшим за мінімальний.\nВведіть правильне значення.");
-    }
-    user.maxAge = age;
-    saveUsers(users);
-    return ctx.reply("🎂 Скільки вам років?", {
-      reply_markup: { force_reply: true },
-    });
-  }
-
-  if (ctx.message.reply_to_message?.text?.includes("Скільки вам років")) {
-    const age = parseInt(text);
-    if (isNaN(age) || age < 14 || age > 99) {
-      return ctx.reply("🔴 Вік повинен бути в межах 14–99 років.\nВведіть правильне значення.");
-    }
-    user.age = age;
-    saveUsers(users);
-    return ctx.reply("🏙️ З якого ви міста?", {
-      reply_markup: { force_reply: true },
-    });
-  }
-
-  // Додаємо обробку відповіді на місто
-  if (ctx.message.reply_to_message?.text?.includes("міста")) {
-    user.city = text;
-    saveUsers(users);
-    const profileText = `• Ім'я: ${user.name}\n• Вік: ${user.age}\n• Місто: ${user.city}\n\n• Про себе: ${user.description || "Не вказано"}`;
-    ctx.replyWithPhoto(user.photo, {
-      caption: profileText,
-    });
-    return ctx.reply("Ось так виглядає ваш профіль. Все правильно?", {
-      reply_markup: {
-        keyboard: [["Так, почати пошук", "Ні, редагувати"]],
-        resize_keyboard: true,
-        one_time_keyboard: true,
-      },
-    });
-  }
+bot.hears("Ні, редагувати", (ctx) => {
+  ctx.reply("🔁 Обери, що хочеш змінити:", {
+    reply_markup: {
+      keyboard: [["📝 Редагувати анкету"]],
+      resize_keyboard: true,
+      one_time_keyboard: true,
+    },
+  });
 });
 
 (async () => {
@@ -484,25 +503,17 @@ bot.on("text", (ctx) => {
   });
 })();
 
-(bot.hears("Так, почати пошук", (ctx) => {
-  ctx.reply("✅ Анкета збережена! Ви можете переглядати інших:", {
-    reply_markup: {
-      keyboard: [
-        ["📱 Знайти анкету", "📝 Редагувати анкету"],
-        ["👀 Хто мене лайкнув", "👤 Мій профіль"],
-      ],
-      resize_keyboard: true,
-      one_time_keyboard: false,
-    },
+function getRandomUser(currentUserId, users) {
+  const currentUser = users[currentUserId];
+  const candidates = Object.values(users).filter(user => {
+    if (user.id === currentUserId) return false;
+    if (!user.photo) return false;
+    if (!user.gender) return false;
+    if (currentUser.searchGender !== "any" && user.gender !== currentUser.searchGender) return false;
+    if (user.age < (currentUser.minAge || 14)) return false;
+    if (user.age > (currentUser.maxAge || 99)) return false;
+    return true;
   });
-}));
-
-bot.hears("Ні, редагувати", (ctx) => {
-  ctx.reply("🔁 Обери, що хочеш змінити:", {
-    reply_markup: {
-      keyboard: [["📝 Редагувати анкету"]],
-      resize_keyboard: true,
-      one_time_keyboard: true,
-    },
-  });
-});
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
