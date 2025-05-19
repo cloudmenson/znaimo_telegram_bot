@@ -222,7 +222,7 @@ bot.action("dislike", (ctx) => {
   ctx.deleteMessage();
 });
 
-// --------------------- Редагування анкети ------------------------
+// --------------------- edit profile ------------------------
 
 bot.command("edit", (ctx) => {
   const users = loadUsers();
@@ -234,6 +234,33 @@ bot.command("edit", (ctx) => {
     saveUsers(users);
     ctx.reply("Редагуємо анкету. Як тебе звати?");
   }
+});
+
+// --------------------- user profile ------------------------
+
+bot.command("profile", (ctx) => {
+  const users = loadUsers();
+  const id = ctx.from.id;
+
+  if (!users[id] || !users[id].finished) {
+    return ctx.reply("Ти ще не створив анкету! /start — щоб почати.");
+  }
+
+  const user = users[id];
+
+  if (!user.data.photos || user.data.photos.length === 0) {
+    return ctx.reply("У твоїй анкеті ще немає фото.");
+  }
+
+  ctx
+    .replyWithMediaGroup(
+      user.data.photos.map((file_id) => ({ type: "photo", media: file_id }))
+    )
+    .then(() => {
+      ctx.reply(
+        `Твоя анкета:\n\nІм'я: ${user.data.name}\nВік: ${user.data.age}\nПро себе: ${user.data.about}`
+      );
+    });
 });
 
 // --------------------- Запуск ------------------------
