@@ -6,6 +6,10 @@ const { loadUser, saveUser, getAllUsers } = require("./mongo");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
+const mainMenu = Markup.keyboard([
+  ["🔍 Шукати", "⭐", "⚙️ Профіль"]
+]).resize();
+
 // --------------------- Анкета логіка ------------------------
 
 const startProfile = {
@@ -29,7 +33,8 @@ bot.start(async (ctx) => {
     ctx.reply("Вітаю у Znaimo! Давай створимо твою анкету. Як тебе звати?");
   } else {
     ctx.reply(
-      "Ти вже маєш анкету! /search — шукати людей, /edit — змінити анкету"
+      "Ти вже маєш анкету! /search — шукати людей, /edit — змінити анкету",
+      mainMenu
     );
   }
 });
@@ -38,6 +43,19 @@ bot.start(async (ctx) => {
 bot.on("message", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
+
+  if (ctx.message.text === "🔍 Шукати") {
+    ctx.telegram.emit('text', Object.assign(ctx, { message: { text: '/search' } }));
+    return;
+  }
+  if (ctx.message.text === "⭐ Преміум") {
+    ctx.reply("Преміум скоро буде доступний 😉");
+    return;
+  }
+  if (ctx.message.text === "⚙️ Профіль") {
+    ctx.reply("Використовуй /edit для редагування анкети.");
+    return;
+  }
 
   // Якщо немає анкети — почати
   if (!user) {
@@ -128,7 +146,7 @@ bot.on("message", async (ctx) => {
           await saveUser(user);
           ctx.reply(
             "Твоя анкета готова! /search — шукати людей, /edit — редагувати анкету.",
-            Markup.removeKeyboard()
+            mainMenu
           );
         }
       } else {
@@ -252,7 +270,7 @@ bot.command("profile", async (ctx) => {
 
 // --------------------- Запуск ------------------------
 bot.launch();
-console.log("Bot is running!");
+console.log("@@@@@@@@@@@ BOT IS RUNNING! @@@@@@@@@@@");
 
 // Express (щоб не падало на free хостах)
 const app = express();
