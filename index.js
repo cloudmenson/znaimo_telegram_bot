@@ -92,7 +92,7 @@ bot.on("message", async (ctx) => {
       })),
     ]);
     return ctx.replyWithHTML(
-      "",
+      "Оберіть дію:",
       Markup.keyboard([["✏️ Редагувати", "❌ Видалити профіль"]])
         .oneTime()
         .resize()
@@ -409,7 +409,10 @@ async function handleSearch(ctx, user, id) {
     })),
   ]);
   // Кнопки під анкетою як звичайна клавіатура!
-  await ctx.reply("", Markup.keyboard([["💝", "❌", "⚙️ Профіль"]]).resize());
+  await ctx.reply(
+    "Оберіть дію:",
+    Markup.keyboard([["💝", "❌", "⚙️ Профіль"]]).resize()
+  );
 }
 
 // ----------- Лайк / Дизлайк ----------------------
@@ -532,7 +535,7 @@ bot.action("profile_back", async (ctx) => {
     })),
   ]);
   await ctx.replyWithHTML(
-    "",
+    "Оберіть дію:",
     Markup.keyboard([["✏️ Редагувати", "❌ Видалити профіль"]])
       .oneTime()
       .resize()
@@ -565,7 +568,7 @@ bot.command("profile", async (ctx) => {
     })),
   ]);
   ctx.replyWithHTML(
-    "",
+    "Оберіть дію:",
     Markup.keyboard([["✏️ Редагувати", "❌ Видалити профіль"]])
       .oneTime()
       .resize()
