@@ -71,8 +71,8 @@ bot.on("message", async (ctx) => {
   if (ctx.message.text === "⚙️ Профіль") {
     if (!user || !user.finished) {
       return ctx.reply(
-        "Ти ще не створив анкету! /start — щоб почати.",
-        mainMenu
+        "Ти ще не створив анкету! Натисни /start щоб почати.",
+        Markup.removeKeyboard()
       );
     }
     if (!user.data.photos || user.data.photos.length === 0) {
@@ -567,6 +567,7 @@ bot.command("profile", async (ctx) => {
     })),
   ]);
   ctx.replyWithHTML(
+    "",
     Markup.keyboard([["✏️ Редагувати", "❌ Видалити профіль"]])
       .oneTime()
       .resize()
