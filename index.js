@@ -214,7 +214,7 @@ console.log("Bot is running!");
 // Express (щоб не падало на free хостах)
 const app = express();
 app.get("/", (req, res) => res.send("Znaimo bot is alive!"));
-app.listen(process.env.PORT || 3000);
+app.listen(process.env.PORT);
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
