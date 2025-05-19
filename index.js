@@ -49,11 +49,40 @@ bot.on("message", async (ctx) => {
     return;
   }
   if (ctx.message.text === "⭐ Преміум") {
-    ctx.reply("Преміум скоро буде доступний 😉");
+    ctx.reply("Преміум скоро буде доступний 😉", mainMenu);
     return;
   }
   if (ctx.message.text === "⚙️ Профіль") {
-    ctx.reply("Використовуй /edit для редагування анкети.");
+    if (!user || !user.finished) {
+      ctx.reply("Ти ще не створив анкету! /start — щоб почати.", mainMenu);
+    } else {
+      if (!user.data.photos || user.data.photos.length === 0) {
+        ctx.reply("У твоїй анкеті ще немає фото.", mainMenu);
+      } else {
+        await ctx.replyWithMediaGroup(
+          user.data.photos.map((file_id) => ({ type: "photo", media: file_id }))
+        );
+        ctx.reply(
+          `Твоя анкета:\n\nІм'я: ${user.data.name}\nВік: ${user.data.age}\nПро себе: ${user.data.about}`,
+          Markup.keyboard([["❌ Видалити профіль", "✏️ Редагувати"]])
+            .oneTime()
+            .resize()
+        );
+      }
+    }
+    return;
+  }
+
+  if (ctx.message.text === "❌ Видалити профіль") {
+    if (user) {
+      await saveUser(null, id.toString());
+    }
+    ctx.reply("Профіль видалено. /start щоб створити заново.", Markup.removeKeyboard());
+    return;
+  }
+
+  if (ctx.message.text === "✏️ Редагувати") {
+    ctx.telegram.emit('text', Object.assign(ctx, { message: { text: '/edit' } }));
     return;
   }
 
