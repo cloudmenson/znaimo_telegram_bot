@@ -30,14 +30,10 @@ function prettyProfile(user) {
   const age = user.data.age || "";
   const city = user.data.city || "";
   const about = user.data.about || "";
-  const username = user.username ? `@${user.username}` : null;
 
   let profileText = `<b>Ім'я:</b> ${name}\n<b>Вік:</b> ${age}\n`;
   if (city) {
     profileText += `<b>Місто:</b> ${city}\n`;
-  }
-  if (username) {
-    profileText += `<b>Telegram:</b> ${username}\n`;
   }
   profileText += `<b>Про себе:</b> ${about}`;
   return profileText;
@@ -88,16 +84,15 @@ bot.on("message", async (ctx) => {
         type: "photo",
         media: photos[0],
         caption: prettyProfile(user),
-        parse_mode: "HTML"
+        parse_mode: "HTML",
       },
       ...photos.slice(1).map((file_id) => ({
         type: "photo",
-        media: file_id
-      }))
+        media: file_id,
+      })),
     ]);
     return ctx.replyWithHTML(
-      "<i>Спільних інтересів: 0</i>",
-      Markup.keyboard([["❌ Видалити профіль", "✏️ Редагувати"]])
+      Markup.keyboard([["✏️ Редагувати", "❌ Видалити профіль"]])
         .oneTime()
         .resize()
     );
@@ -404,15 +399,14 @@ async function handleSearch(ctx, user, id) {
       type: "photo",
       media: photos[0],
       caption: prettyProfile(other),
-      parse_mode: "HTML"
+      parse_mode: "HTML",
     },
     ...photos.slice(1).map((file_id) => ({
       type: "photo",
-      media: file_id
-    }))
+      media: file_id,
+    })),
   ]);
   await ctx.replyWithHTML(
-    "<i>Спільних інтересів: 0</i>",
     Markup.inlineKeyboard([
       Markup.button.callback("💝", "like"),
       Markup.button.callback("❌", "dislike"),
@@ -536,16 +530,15 @@ bot.action("profile_back", async (ctx) => {
       type: "photo",
       media: photos[0],
       caption: prettyProfile(user),
-      parse_mode: "HTML"
+      parse_mode: "HTML",
     },
     ...photos.slice(1).map((file_id) => ({
       type: "photo",
-      media: file_id
-    }))
+      media: file_id,
+    })),
   ]);
   await ctx.replyWithHTML(
-    "<i>Спільних інтересів: 0</i>",
-    Markup.keyboard([["❌ Видалити профіль", "✏️ Редагувати"]])
+    Markup.keyboard([["✏️ Редагувати", "❌ Видалити профіль"]])
       .oneTime()
       .resize()
   );
@@ -569,16 +562,15 @@ bot.command("profile", async (ctx) => {
       type: "photo",
       media: photos[0],
       caption: prettyProfile(user),
-      parse_mode: "HTML"
+      parse_mode: "HTML",
     },
     ...photos.slice(1).map((file_id) => ({
       type: "photo",
-      media: file_id
-    }))
+      media: file_id,
+    })),
   ]);
   ctx.replyWithHTML(
-    "<i>Спільних інтересів: 0</i>",
-    Markup.keyboard([["❌ Видалити профіль", "✏️ Редагувати"]])
+    Markup.keyboard([["✏️ Редагувати", "❌ Видалити профіль"]])
       .oneTime()
       .resize()
   );
