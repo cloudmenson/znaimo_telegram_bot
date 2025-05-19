@@ -82,11 +82,21 @@ bot.on("message", async (ctx) => {
     if (!user.data.photos || user.data.photos.length === 0) {
       return ctx.reply("У твоїй анкеті ще немає фото.", mainMenu);
     }
-    await ctx.replyWithMediaGroup(
-      user.data.photos.map((file_id) => ({ type: "photo", media: file_id }))
-    );
+    const photos = user.data.photos;
+    await ctx.replyWithMediaGroup([
+      {
+        type: "photo",
+        media: photos[0],
+        caption: prettyProfile(user),
+        parse_mode: "HTML"
+      },
+      ...photos.slice(1).map((file_id) => ({
+        type: "photo",
+        media: file_id
+      }))
+    ]);
     return ctx.replyWithHTML(
-      prettyProfile(user),
+      "<i>Спільних інтересів: 0</i>",
       Markup.keyboard([["❌ Видалити профіль", "✏️ Редагувати"]])
         .oneTime()
         .resize()
@@ -388,11 +398,21 @@ async function handleSearch(ctx, user, id) {
   user.currentView = other.id;
   await saveUser(user);
 
-  await ctx.replyWithMediaGroup(
-    other.data.photos.map((file_id) => ({ type: "photo", media: file_id }))
-  );
+  const photos = other.data.photos;
+  await ctx.replyWithMediaGroup([
+    {
+      type: "photo",
+      media: photos[0],
+      caption: prettyProfile(other),
+      parse_mode: "HTML"
+    },
+    ...photos.slice(1).map((file_id) => ({
+      type: "photo",
+      media: file_id
+    }))
+  ]);
   await ctx.replyWithHTML(
-    prettyProfile(other),
+    "<i>Спільних інтересів: 0</i>",
     Markup.inlineKeyboard([
       Markup.button.callback("💝", "like"),
       Markup.button.callback("❌", "dislike"),
@@ -510,11 +530,21 @@ bot.action("profile_back", async (ctx) => {
   if (!user.data.photos || user.data.photos.length === 0) {
     return ctx.reply("У твоїй анкеті ще немає фото.");
   }
-  await ctx.replyWithMediaGroup(
-    user.data.photos.map((file_id) => ({ type: "photo", media: file_id }))
-  );
+  const photos = user.data.photos;
+  await ctx.replyWithMediaGroup([
+    {
+      type: "photo",
+      media: photos[0],
+      caption: prettyProfile(user),
+      parse_mode: "HTML"
+    },
+    ...photos.slice(1).map((file_id) => ({
+      type: "photo",
+      media: file_id
+    }))
+  ]);
   await ctx.replyWithHTML(
-    prettyProfile(user),
+    "<i>Спільних інтересів: 0</i>",
     Markup.keyboard([["❌ Видалити профіль", "✏️ Редагувати"]])
       .oneTime()
       .resize()
@@ -533,11 +563,21 @@ bot.command("profile", async (ctx) => {
   if (!user.data.photos || user.data.photos.length === 0) {
     return ctx.reply("У твоїй анкеті ще немає фото.");
   }
-  await ctx.replyWithMediaGroup(
-    user.data.photos.map((file_id) => ({ type: "photo", media: file_id }))
-  );
+  const photos = user.data.photos;
+  await ctx.replyWithMediaGroup([
+    {
+      type: "photo",
+      media: photos[0],
+      caption: prettyProfile(user),
+      parse_mode: "HTML"
+    },
+    ...photos.slice(1).map((file_id) => ({
+      type: "photo",
+      media: file_id
+    }))
+  ]);
   ctx.replyWithHTML(
-    prettyProfile(user),
+    "<i>Спільних інтересів: 0</i>",
     Markup.keyboard([["❌ Видалити профіль", "✏️ Редагувати"]])
       .oneTime()
       .resize()
