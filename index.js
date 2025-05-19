@@ -6,38 +6,39 @@ const { loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// Основні меню як inline-клавіатури
-const mainMenu = Markup.inlineKeyboard([
-  [
-    Markup.button.callback("🔍 Дивитися анкети", "search"),
-    Markup.button.callback("✏️ Редагувати профіль", "edit_profile"),
-  ],
-]);
+// Основні меню як звичайна клавіатура
+const mainMenu = Markup.keyboard([
+  ["🔍 Дивитися анкети", "✏️ Редагувати профіль"],
+])
+  .resize()
+  .oneTime(false);
 
-const searchMenu = Markup.inlineKeyboard([
-  [
-    Markup.button.callback("💝", "like"),
-    Markup.button.callback("❌", "dislike"),
-    Markup.button.callback("⚙️ Профіль", "profile"),
-  ],
-]);
+const searchMenu = Markup.keyboard([
+  ["💝", "❌", "⚙️ Профіль"],
+])
+  .resize()
+  .oneTime(false);
 
-const pendingMenu = Markup.inlineKeyboard([
-  [
-    Markup.button.callback("💝 Взаємно", "pending_like"),
-    Markup.button.callback("❌ Відхилити", "pending_dislike"),
-  ],
-]);
+const pendingMenu = Markup.keyboard([
+  ["💝 Взаємно", "❌ Відхилити"],
+])
+  .resize()
+  .oneTime(false);
 
+// Меню редагування профілю — тільки воно інлайн!
 const editProfileMenu = Markup.inlineKeyboard([
   [
     Markup.button.callback("✏️ Ім'я", "edit_name"),
     Markup.button.callback("🎂 Вік", "edit_age"),
+  ],
+  [
     Markup.button.callback("🏠 Місто", "edit_city"),
     Markup.button.callback("📝 Опис", "edit_about"),
+  ],
+  [
     Markup.button.callback("🤳 Фото", "edit_photos"),
     Markup.button.callback("⬅️ Назад", "edit_back"),
-  ],
+  ]
 ]);
 
 const startProfile = {
