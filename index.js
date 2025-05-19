@@ -428,9 +428,6 @@ bot.action("like", async (ctx) => {
   // Додаємо переглянуту анкету до seen
   user.seen = [...(user.seen || []), otherId];
   await saveUser(user);
-
-  // Повідомлення користувачу про лайк
-  ctx.reply("Тобі сподобалася анкета!");
   ctx.deleteMessage();
 
   // Повідомляємо власнику анкети, що його лайкнули
@@ -486,7 +483,6 @@ bot.action("dislike", async (ctx) => {
   // Додаємо переглянуту анкету до seen
   user.seen = [...(user.seen || []), otherId];
   await saveUser(user);
-  ctx.reply("Анкета відхилена.");
   ctx.deleteMessage();
 
   // Після дизлайку одразу шукаємо наступну анкету
