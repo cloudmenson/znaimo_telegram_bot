@@ -67,17 +67,45 @@ bot.on("message", async (ctx) => {
     return ctx.reply("Преміум скоро буде доступний 🫡", mainMenu);
   }
 
-  // --- Кнопка Профіль ---
-  if (ctx.message.text === "⚙️ Профіль") {
-    if (!user || !user.finished) {
-      return ctx.reply(
-        "Ти ще не створив анкету! Натисни /start щоб почати.",
-        Markup.removeKeyboard()
-      );
-    }
-    if (!user.data.photos || user.data.photos.length === 0) {
-      return ctx.reply(
-        "У твоїй анкеті ще немає фото.",
+  // --- Кнопки пошуку/лайків/профілю ---
+  if (
+    ctx.message.text === "💝" ||
+    ctx.message.text === "❌" ||
+    ctx.message.text === "⚙️ Профіль"
+  ) {
+    // Обробка "⚙️ Профіль"
+    if (ctx.message.text === "⚙️ Профіль") {
+      if (!user || !user.finished) {
+        return ctx.reply(
+          "Ти ще не створив анкету! Натисни /start щоб почати.",
+          Markup.removeKeyboard()
+        );
+      }
+      if (!user.data.photos || user.data.photos.length === 0) {
+        return ctx.reply(
+          "У твоїй анкеті ще немає фото.",
+          Markup.keyboard([
+            ["🔍 Дивитися анкети"],
+            ["✏️ Редагувати профіль"],
+            ["❌ Видалити профіль"],
+          ]).resize()
+        );
+      }
+      const photos = user.data.photos;
+      await ctx.replyWithMediaGroup([
+        {
+          type: "photo",
+          media: photos[0],
+          caption: prettyProfile(user),
+          parse_mode: "HTML",
+        },
+        ...photos.slice(1).map((file_id) => ({
+          type: "photo",
+          media: file_id,
+        })),
+      ]);
+      return ctx.replyWithHTML(
+        "Оберіть дію:",
         Markup.keyboard([
           ["🔍 Дивитися анкети"],
           ["✏️ Редагувати профіль"],
@@ -85,27 +113,11 @@ bot.on("message", async (ctx) => {
         ]).resize()
       );
     }
-    const photos = user.data.photos;
-    await ctx.replyWithMediaGroup([
-      {
-        type: "photo",
-        media: photos[0],
-        caption: prettyProfile(user),
-        parse_mode: "HTML",
-      },
-      ...photos.slice(1).map((file_id) => ({
-        type: "photo",
-        media: file_id,
-      })),
-    ]);
-    return ctx.replyWithHTML(
-      "Оберіть дію:",
-      Markup.keyboard([
-        ["🔍 Дивитися анкети"],
-        ["✏️ Редагувати профіль"],
-        ["❌ Видалити профіль"],
-      ]).resize()
-    );
+    // Обробка "💝" та "❌"
+    if (ctx.message.text === "💝" || ctx.message.text === "❌") {
+      await handleLikeDislike(ctx, user, ctx.message.text === "💝" ? "like" : "dislike");
+      return;
+    }
   }
 
   // --- Кнопка Видалити профіль ---
@@ -522,79 +534,67 @@ async function handleSearch(ctx, user, id) {
   );
 }
 
-// ----------- Лайк / Дизлайк ----------------------
-
-// ----------- Лайк / Дизлайк з обробкою взаємних лайків та пошуком наступної анкети -----------
+// ----------- Лайк / Дизлайк (inline кнопки) ----------------------
 bot.action("like", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
-  const otherId = user?.currentView;
-
-  if (!otherId) return ctx.reply("Помилка. Спробуй знову");
-
-  // Додаємо переглянуту анкету до seen
-  user.seen = [...(user.seen || []), otherId];
-  await saveUser(user);
-  ctx.deleteMessage();
-
-  // Повідомляємо власнику анкети, що його лайкнули
-  const likedUser = await loadUser(otherId);
-  if (likedUser) {
-    // Якщо у likedUser вже є лайкнувшого у seen — це взаємний лайк
-    if ((likedUser.seen || []).includes(id)) {
-      // Взаємний лайк — повідомити обох
-      try {
-        // ========== ВСТАВ ЦЕЙ БЛОК ТУТ ==========
-        if (user.username) {
-          // Надсилаємо посилання на користувача для likedUser
-          await ctx.telegram.sendMessage(
-            otherId,
-            `💞 Ви щойно отримали взаємний лайк!\n\n` +
-              `Бажаємо приємно провести час!\n` +
-              `Ось посилання на користувача: https://t.me/${user.username}`
-          );
-        }
-        if (likedUser.username) {
-          // Надсилаємо посилання на likedUser для user
-          await ctx.telegram.sendMessage(
-            id,
-            `💞 Ви щойно отримали взаємний лайк!\n\n` +
-              `Бажаємо приємно провести час!\n` +
-              `Користувач: https://t.me/${likedUser.username}`
-          );
-        }
-        // ========== КІНЕЦЬ БЛОКУ ==========
-      } catch (e) {}
-    } else {
-      // Просто повідомлення власнику анкети
-      try {
-        await ctx.telegram.sendMessage(
-          otherId,
-          "Ваша анкета комусь сподобалась!"
-        );
-      } catch (e) {}
-    }
-  }
-
-  // Після лайку одразу шукаємо наступну анкету
-  await handleSearch(ctx, user, id);
+  await handleLikeDislike(ctx, user, "like", true);
 });
-
 bot.action("dislike", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
+  await handleLikeDislike(ctx, user, "dislike", true);
+});
+
+// ----------- Функція обробки лайку/дизлайку -----------
+async function handleLikeDislike(ctx, user, type, isInline = false) {
+  const id = ctx.from.id;
   const otherId = user?.currentView;
-
-  if (!otherId) return ctx.reply("Помилка. Спробуй знову");
-
+  if (!otherId) {
+    if (isInline) return ctx.reply("Помилка. Спробуй знову");
+    else return ctx.reply("Анкета не знайдена. Спробуй ще раз через пошук.");
+  }
   // Додаємо переглянуту анкету до seen
   user.seen = [...(user.seen || []), otherId];
   await saveUser(user);
-  ctx.deleteMessage();
-
-  // Після дизлайку одразу шукаємо наступну анкету
+  if (isInline) ctx.deleteMessage();
+  if (type === "like") {
+    // Повідомляємо власнику анкети, що його лайкнули
+    const likedUser = await loadUser(otherId);
+    if (likedUser) {
+      // Якщо у likedUser вже є лайкнувшого у seen — це взаємний лайк
+      if ((likedUser.seen || []).includes(id)) {
+        try {
+          if (user.username) {
+            await ctx.telegram.sendMessage(
+              otherId,
+              `💞 Ви щойно отримали взаємний лайк!\n\n` +
+                `Бажаємо приємно провести час!\n` +
+                `Ось посилання на користувача: https://t.me/${user.username}`
+            );
+          }
+          if (likedUser.username) {
+            await ctx.telegram.sendMessage(
+              id,
+              `💞 Ви щойно отримали взаємний лайк!\n\n` +
+                `Бажаємо приємно провести час!\n` +
+                `Користувач: https://t.me/${likedUser.username}`
+            );
+          }
+        } catch (e) {}
+      } else {
+        try {
+          await ctx.telegram.sendMessage(
+            otherId,
+            "Ваша анкета комусь сподобалась!"
+          );
+        } catch (e) {}
+      }
+    }
+  }
+  // Після лайку/дизлайку одразу шукаємо наступну анкету
   await handleSearch(ctx, user, id);
-});
+}
 
 // --------------------- /edit (скидання анкети) ------------------
 
