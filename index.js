@@ -2,12 +2,12 @@ const express = require("express");
 const { Telegraf, Markup } = require("telegraf");
 require("dotenv").config();
 
-const { loadUser, saveUser, getAllUsers } = require("./mongo");
+const { loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const mainMenu = Markup.keyboard([
-  ["🔍 Шукати", "⭐", "⚙️ Профіль"]
+  ["🔍 Шукати", "⭐ Преміум", "⚙️ Профіль"],
 ]).resize();
 
 // --------------------- Анкета логіка ------------------------
@@ -27,10 +27,13 @@ const startProfile = {
 bot.start(async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
+
   if (!user || !user.finished) {
-    user = { ...startProfile, finished: false, _id: id.toString() };
+    user = { ...startProfile, id, finished: false };
     await saveUser(user);
-    ctx.reply("Вітаю у Znaimo! Давай створимо твою анкету. Як тебе звати?");
+    // Показати два окремих повідомлення:
+    await ctx.reply("Вітаю у Znaimo! Давай створимо твою анкету.");
+    await ctx.reply("Почнемо з імені. Як тебе звати?");
   } else {
     ctx.reply(
       "Ти вже маєш анкету! /search — шукати людей, /edit — змінити анкету",
@@ -45,7 +48,10 @@ bot.on("message", async (ctx) => {
   let user = await loadUser(id);
 
   if (ctx.message.text === "🔍 Шукати") {
-    ctx.telegram.emit('text', Object.assign(ctx, { message: { text: '/search' } }));
+    ctx.telegram.emit(
+      "text",
+      Object.assign(ctx, { message: { text: "/search" } })
+    );
     return;
   }
   if (ctx.message.text === "⭐ Преміум") {
@@ -75,21 +81,28 @@ bot.on("message", async (ctx) => {
 
   if (ctx.message.text === "❌ Видалити профіль") {
     if (user) {
-      await saveUser(null, id.toString());
+      await removeUser(id);
     }
-    ctx.reply("Профіль видалено. /start щоб створити заново.", Markup.removeKeyboard());
+    ctx.reply(
+      "Профіль видалено. /start щоб створити заново.",
+      Markup.removeKeyboard()
+    );
     return;
   }
 
   if (ctx.message.text === "✏️ Редагувати") {
-    ctx.telegram.emit('text', Object.assign(ctx, { message: { text: '/edit' } }));
+    ctx.telegram.emit(
+      "text",
+      Object.assign(ctx, { message: { text: "/edit" } })
+    );
     return;
   }
 
   // Якщо немає анкети — почати
   if (!user) {
-    user = { ...startProfile, _id: id.toString() };
+    user = { ...startProfile, id, finished: false };
     await saveUser(user);
+    await ctx.reply("Вітаю у Znaimo! Давай створимо твою анкету.");
     return ctx.reply("Почнемо з імені. Як тебе звати?");
   }
 
@@ -149,7 +162,6 @@ bot.on("message", async (ctx) => {
         user.data.photos.push(fileId);
         await saveUser(user);
 
-        // Якщо є хоча б 1 фото — показати кнопку "Готово"
         if (user.data.photos.length >= 1) {
           ctx.reply(
             `Фото додано (${user.data.photos.length}/3). Ще додати? Надішли фото або натисни 'Готово'.`,
@@ -158,7 +170,6 @@ bot.on("message", async (ctx) => {
               .resize()
           );
         } else {
-          // Якщо ще немає жодного фото — звичайна клавіатура
           ctx.reply(
             `Фото додано (${user.data.photos.length}/3). Ще додати? Надішли фото.`
           );
@@ -202,7 +213,7 @@ bot.command("search", async (ctx) => {
   const seen = user.seen || [];
   const allUsers = await getAllUsers();
   const others = allUsers.filter(
-    (u) => u._id !== id.toString() && u.finished && !seen.includes(u._id)
+    (u) => u.id !== id && u.finished && !seen.includes(u.id)
   );
 
   if (others.length === 0) {
@@ -212,7 +223,7 @@ bot.command("search", async (ctx) => {
   const other = others[Math.floor(Math.random() * others.length)];
 
   // Запамʼятовуємо, що показали цю анкету
-  user.currentView = other._id;
+  user.currentView = other.id;
   await saveUser(user);
 
   ctx
@@ -266,7 +277,7 @@ bot.command("edit", async (ctx) => {
   if (!user) {
     ctx.reply("У тебе ще немає анкети! /start");
   } else {
-    user = { ...startProfile, finished: false, _id: id.toString() };
+    user = { ...startProfile, id, finished: false };
     await saveUser(user);
     ctx.reply("Редагуємо анкету. Як тебе звати?");
   }
