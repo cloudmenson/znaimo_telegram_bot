@@ -76,7 +76,14 @@ bot.on("message", async (ctx) => {
       );
     }
     if (!user.data.photos || user.data.photos.length === 0) {
-      return ctx.reply("У твоїй анкеті ще немає фото.", mainMenu);
+      return ctx.reply(
+        "У твоїй анкеті ще немає фото.",
+        Markup.keyboard([
+          ["🔍 Дивитися анкети"],
+          ["✏️ Редагувати профіль"],
+          ["❌ Видалити профіль"],
+        ]).resize()
+      );
     }
     const photos = user.data.photos;
     await ctx.replyWithMediaGroup([
@@ -92,10 +99,12 @@ bot.on("message", async (ctx) => {
       })),
     ]);
     return ctx.replyWithHTML(
-      "Оберіть дію:",
-      Markup.keyboard([["✏️ Редагувати", "❌ Видалити профіль"]])
-        .oneTime()
-        .resize()
+      "",
+      Markup.keyboard([
+        ["🔍 Дивитися анкети"],
+        ["✏️ Редагувати профіль"],
+        ["❌ Видалити профіль"],
+      ]).resize()
     );
   }
 
@@ -110,21 +119,84 @@ bot.on("message", async (ctx) => {
     );
   }
 
-  // --- Кнопка ✏️ Редагувати (Відкрити меню редагування) ---
-  if (ctx.message.text === "✏️ Редагувати") {
+  // --- Кнопка ✏️ Редагувати профіль (Відкрити меню редагування) ---
+  if (
+    ctx.message.text === "✏️ Редагувати профіль" ||
+    ctx.message.text === "✏️ Редагувати"
+  ) {
     if (!user || !user.finished) {
       return ctx.reply("Спочатку створи анкету! /start");
     }
     return ctx.reply(
       "Що ти хочеш змінити?",
-      Markup.inlineKeyboard([
-        [Markup.button.callback("✏️ Ім'я", "edit_name")],
-        [Markup.button.callback("🎂 Вік", "edit_age")],
-        [Markup.button.callback("🏠 Місто", "edit_city")],
-        [Markup.button.callback("📝 Опис", "edit_about")],
-        [Markup.button.callback("🤳 Фото", "edit_photos")],
-        [Markup.button.callback("⬅️ Назад", "profile_back")],
-      ])
+      Markup.keyboard([
+        ["✏️ Ім'я", "🎂 Вік"],
+        ["🏠 Місто", "📝 Опис"],
+        ["🤳 Фото"],
+        ["⬅️ Назад"],
+      ]).resize()
+    );
+  }
+
+  // --- Меню редагування профілю ---
+  if (ctx.message.text === "✏️ Ім'я") {
+    user.editStep = "edit_name";
+    await saveUser(user);
+    return ctx.reply("Введи нове імʼя:");
+  }
+  if (ctx.message.text === "🎂 Вік") {
+    user.editStep = "edit_age";
+    await saveUser(user);
+    return ctx.reply("Введи новий вік:");
+  }
+  if (ctx.message.text === "🏠 Місто") {
+    user.editStep = "edit_city";
+    await saveUser(user);
+    return ctx.reply("Введи нову назву міста:");
+  }
+  if (ctx.message.text === "📝 Опис") {
+    user.editStep = "edit_about";
+    await saveUser(user);
+    return ctx.reply("Введи новий опис (5-200 символів):");
+  }
+  if (ctx.message.text === "🤳 Фото") {
+    user.editStep = "edit_photos";
+    user.data.photos = [];
+    await saveUser(user);
+    return ctx.reply(
+      "Відправ фото одне за одним (максимум 3). Коли закінчиш — напиши 'Готово'.",
+      Markup.keyboard([["Готово"]])
+        .oneTime()
+        .resize()
+    );
+  }
+  if (ctx.message.text === "⬅️ Назад") {
+    if (!user || !user.finished) {
+      return ctx.reply("Ти ще не створив анкету! /start — щоб почати.");
+    }
+    if (!user.data.photos || user.data.photos.length === 0) {
+      return ctx.reply("У твоїй анкеті ще немає фото.");
+    }
+    const photos = user.data.photos;
+    await ctx.replyWithMediaGroup([
+      {
+        type: "photo",
+        media: photos[0],
+        caption: prettyProfile(user),
+        parse_mode: "HTML",
+      },
+      ...photos.slice(1).map((file_id) => ({
+        type: "photo",
+        media: file_id,
+      })),
+    ]);
+    return ctx.replyWithHTML(
+      "",
+      Markup.keyboard([
+        ["🔍 Дивитися анкети"],
+        ["✏️ Редагувати профіль"],
+        ["❌ Видалити профіль"],
+      ]).resize()
     );
   }
 
@@ -138,7 +210,14 @@ bot.on("message", async (ctx) => {
         user.data.name = ctx.message.text.trim();
         user.editStep = null;
         await saveUser(user);
-        ctx.reply("Імʼя змінено ✅", mainMenu);
+        ctx.reply(
+          "Імʼя змінено ✅",
+          Markup.keyboard([
+            ["🔍 Дивитися анкети"],
+            ["✏️ Редагувати профіль"],
+            ["❌ Видалити профіль"],
+          ]).resize()
+        );
         break;
 
       case "edit_age":
@@ -150,7 +229,14 @@ bot.on("message", async (ctx) => {
           user.data.age = age;
           user.editStep = null;
           await saveUser(user);
-          ctx.reply("Вік змінено ✅", mainMenu);
+          ctx.reply(
+            "Вік змінено ✅",
+            Markup.keyboard([
+              ["🔍 Дивитися анкети"],
+              ["✏️ Редагувати профіль"],
+              ["❌ Видалити профіль"],
+            ]).resize()
+          );
         }
         break;
 
@@ -161,7 +247,14 @@ bot.on("message", async (ctx) => {
         user.data.city = ctx.message.text.trim();
         user.editStep = null;
         await saveUser(user);
-        ctx.reply("Місто змінено ✅", mainMenu);
+        ctx.reply(
+          "Місто змінено ✅",
+          Markup.keyboard([
+            ["🔍 Дивитися анкети"],
+            ["✏️ Редагувати профіль"],
+            ["❌ Видалити профіль"],
+          ]).resize()
+        );
         break;
 
       case "edit_about":
@@ -175,7 +268,14 @@ bot.on("message", async (ctx) => {
         user.data.about = ctx.message.text.trim();
         user.editStep = null;
         await saveUser(user);
-        ctx.reply("Опис змінено ✅", mainMenu);
+        ctx.reply(
+          "Опис змінено ✅",
+          Markup.keyboard([
+            ["🔍 Дивитися анкети"],
+            ["✏️ Редагувати профіль"],
+            ["❌ Видалити профіль"],
+          ]).resize()
+        );
         break;
 
       case "edit_photos":
@@ -209,7 +309,14 @@ bot.on("message", async (ctx) => {
           } else {
             user.editStep = null;
             await saveUser(user);
-            ctx.reply("Фото оновлено ✅", mainMenu);
+            ctx.reply(
+              "Фото оновлено ✅",
+              Markup.keyboard([
+                ["🔍 Дивитися анкети"],
+                ["✏️ Редагувати профіль"],
+                ["❌ Видалити профіль"],
+              ]).resize()
+            );
           }
         } else {
           ctx.reply("Надішли фото або натисни 'Готово'.");
@@ -386,7 +493,7 @@ async function handleSearch(ctx, user, id) {
   );
 
   if (others.length === 0) {
-    // Показуємо головне меню якщо анкет більше немає
+    // Приховуємо клавіатуру якщо анкет більше немає
     return ctx.reply("Анкет більше немає. Спробуй пізніше.", mainMenu);
   }
 
@@ -410,7 +517,7 @@ async function handleSearch(ctx, user, id) {
   ]);
   // Кнопки під анкетою як звичайна клавіатура!
   await ctx.reply(
-    "Оберіть дію:",
+    "Зробіть свій вибір:",
     Markup.keyboard([["💝", "❌", "⚙️ Профіль"]]).resize()
   );
 }
@@ -535,10 +642,12 @@ bot.action("profile_back", async (ctx) => {
     })),
   ]);
   await ctx.replyWithHTML(
-    "Оберіть дію:",
-    Markup.keyboard([["✏️ Редагувати", "❌ Видалити профіль"]])
-      .oneTime()
-      .resize()
+    "",
+    Markup.keyboard([
+      ["🔍 Дивитися анкети"],
+      ["✏️ Редагувати профіль"],
+      ["❌ Видалити профіль"],
+    ]).resize()
   );
 });
 
@@ -568,10 +677,12 @@ bot.command("profile", async (ctx) => {
     })),
   ]);
   ctx.replyWithHTML(
-    "Оберіть дію:",
-    Markup.keyboard([["✏️ Редагувати", "❌ Видалити профіль"]])
-      .oneTime()
-      .resize()
+    "",
+    Markup.keyboard([
+      ["🔍 Дивитися анкети"],
+      ["✏️ Редагувати профіль"],
+      ["❌ Видалити профіль"],
+    ]).resize()
   );
 });
 
