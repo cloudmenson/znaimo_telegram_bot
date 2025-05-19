@@ -176,9 +176,7 @@ bot.on("message", async (ctx) => {
         if (ctx.message.photo) {
           if (user.data.photos.length >= 3) {
             // Якщо вже 3 фото, не даємо додати ще, повідомлення тільки про максимум
-            return ctx.reply(
-              "3 фото додано. Натисни 'Готово' для завершення."
-            );
+            return ctx.reply("3 фото додано. Натисни 'Готово' для завершення.");
           }
           const fileId =
             ctx.message.photo[ctx.message.photo.length - 1].file_id;
@@ -186,9 +184,7 @@ bot.on("message", async (ctx) => {
           await saveUser(user);
           if (user.data.photos.length === 3) {
             // Якщо це третє фото — одразу повідомляємо про максимум і не пропонуємо додавати ще
-            ctx.reply(
-              "3 фото додано. Натисни 'Готово' для завершення."
-            );
+            ctx.reply("3 фото додано. Натисни 'Готово' для завершення.");
           } else {
             ctx.reply(
               `Фото додано (${user.data.photos.length}/3). Ще додати? Надішли фото або натисни 'Готово'.`,
@@ -286,17 +282,13 @@ bot.on("message", async (ctx) => {
       if (ctx.message.photo) {
         if (user.data.photos.length >= 3) {
           // Забороняємо додавати більше 3 фото
-          return ctx.reply(
-            "3 фото додано. Натисни 'Готово' для завершення."
-          );
+          return ctx.reply("3 фото додано. Натисни 'Готово' для завершення.");
         }
         const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
         user.data.photos.push(fileId);
         await saveUser(user);
         if (user.data.photos.length === 3) {
-          ctx.reply(
-            "3 фото додано. Натисни 'Готово' для завершення."
-          );
+          ctx.reply("3 фото додано. Натисни 'Готово' для завершення.");
         } else {
           ctx.reply(
             `Фото додано (${user.data.photos.length}/3). Ще додати? Надішли фото або натисни 'Готово'.`,
@@ -432,47 +424,34 @@ bot.action("like", async (ctx) => {
     if ((likedUser.seen || []).includes(id)) {
       // Взаємний лайк — повідомити обох
       try {
-        const tgUsernameLiked = likedUser.username ? `https://t.me/${likedUser.username}` : null;
-        const tgUsernameUser = user.username ? `https://t.me/${user.username}` : null;
-
-        const buttonsForLiked = tgUsernameUser
-          ? Markup.inlineKeyboard([
-              Markup.button.url("Написати в Telegram", tgUsernameUser),
-            ])
-          : undefined;
-
-        const buttonsForUser = tgUsernameLiked
-          ? Markup.inlineKeyboard([
-              Markup.button.url("Написати в Telegram", tgUsernameLiked),
-            ])
-          : undefined;
-
-        await ctx.telegram.sendMessage(
-          otherId,
-          `У вас взаємний лайк! 🎉\n\n${prettyProfile(user)}`,
-          { parse_mode: "HTML", ...buttonsForLiked }
-        );
-      } catch (e) {}
-      try {
-        const tgUsernameUser = user.username ? `https://t.me/${user.username}` : null;
-        const tgUsernameLiked = likedUser.username ? `https://t.me/${likedUser.username}` : null;
-
-        const buttonsForUser = tgUsernameLiked
-          ? Markup.inlineKeyboard([
-              Markup.button.url("Написати в Telegram", tgUsernameLiked),
-            ])
-          : undefined;
-
-        await ctx.telegram.sendMessage(
-          id,
-          `У вас взаємний лайк! 🎉\n\n${prettyProfile(likedUser)}`,
-          { parse_mode: "HTML", ...buttonsForUser }
-        );
+        // ========== ВСТАВ ЦЕЙ БЛОК ТУТ ==========
+        if (user.username) {
+          // Надсилаємо посилання на користувача для likedUser
+          await ctx.telegram.sendMessage(
+            otherId,
+            `💞 Ви щойно отримали взаємний лайк!\n\n` +
+              `Бажаємо приємно провести час!\n` +
+              `Ось посилання на користувача: https://t.me/${user.username}`
+          );
+        }
+        if (likedUser.username) {
+          // Надсилаємо посилання на likedUser для user
+          await ctx.telegram.sendMessage(
+            id,
+            `💞 Ви щойно отримали взаємний лайк!\n\n` +
+              `Бажаємо приємно провести час!\n` +
+              `Користувач: https://t.me/${likedUser.username}`
+          );
+        }
+        // ========== КІНЕЦЬ БЛОКУ ==========
       } catch (e) {}
     } else {
       // Просто повідомлення власнику анкети
       try {
-        await ctx.telegram.sendMessage(otherId, "Ваша анкета сподобалась користувачу!");
+        await ctx.telegram.sendMessage(
+          otherId,
+          "Ваша анкета комусь сподобалась!"
+        );
       } catch (e) {}
     }
   }
