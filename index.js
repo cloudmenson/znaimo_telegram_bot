@@ -6,13 +6,39 @@ const { loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-const mainMenu = Markup.keyboard([
-  ["🔍 Дивитися анкети", "✏️ Редагувати профіль", "❌ Видалити профіль"],
-]).resize();
+// Основні меню як inline-клавіатури
+const mainMenu = Markup.inlineKeyboard([
+  [
+    Markup.button.callback("🔍 Дивитися анкети", "search"),
+    Markup.button.callback("✏️ Редагувати профіль", "edit_profile"),
+  ],
+]);
 
-const searchMenu = Markup.keyboard([["💝", "❌", "⚙️ Профіль"]]).resize();
+const searchMenu = Markup.inlineKeyboard([
+  [
+    Markup.button.callback("💝", "like"),
+    Markup.button.callback("❌", "dislike"),
+    Markup.button.callback("⚙️ Профіль", "profile"),
+  ],
+]);
 
-const pendingMenu = Markup.keyboard([["💝 Взаємно", "❌ Відхилити"]]).resize();
+const pendingMenu = Markup.inlineKeyboard([
+  [
+    Markup.button.callback("💝 Взаємно", "pending_like"),
+    Markup.button.callback("❌ Відхилити", "pending_dislike"),
+  ],
+]);
+
+const editProfileMenu = Markup.inlineKeyboard([
+  [
+    Markup.button.callback("✏️ Ім'я", "edit_name"),
+    Markup.button.callback("🎂 Вік", "edit_age"),
+    Markup.button.callback("🏠 Місто", "edit_city"),
+    Markup.button.callback("📝 Опис", "edit_about"),
+    Markup.button.callback("🤳 Фото", "edit_photos"),
+    Markup.button.callback("⬅️ Назад", "edit_back"),
+  ],
+]);
 
 const startProfile = {
   step: "name",
@@ -44,7 +70,8 @@ function prettyProfile(user) {
 }
 
 async function checkPendingLikes(ctx, user) {
-  if (!user || !user.pendingLikes || user.pendingLikes.length === 0) return false;
+  if (!user || !user.pendingLikes || user.pendingLikes.length === 0)
+    return false;
   const pendingId = user.pendingLikes[0];
   const pendingUser = await loadUser(pendingId);
   if (
@@ -86,13 +113,210 @@ bot.start(async (ctx) => {
   if (!user || !user.finished) {
     user = { ...startProfile, id, username: ctx.from.username || null };
     await saveUser(user);
-    await ctx.reply("Вітаю у Znaimo! Давай створимо твою анкету.");
-    await ctx.reply("Почнемо з імені. Як тебе звати?");
+    // Показати лише кнопку "Створити анкету" (inline)
+    await ctx.reply(
+      "Вітаю у Znaimo! Давай створимо твою анкету.",
+      Markup.inlineKeyboard([
+        [Markup.button.callback("Створити анкету", "create_profile")],
+      ])
+    );
   } else {
     ctx.reply("Ти вже маєш анкету! Обирай дію нижче:", mainMenu);
   }
 });
 
+// ------------------ INLINE-КНОПКИ ТА CALLBACK-и ------------------
+
+// Створити анкету (коли ще не існує)
+bot.action("create_profile", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user) {
+    user = { ...startProfile, id, username: ctx.from.username || null };
+    await saveUser(user);
+  }
+  user.step = "name";
+  await saveUser(user);
+  await ctx.editMessageText("Почнемо з імені. Як тебе звати?");
+});
+
+// Головне меню: пошук
+bot.action("search", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.answerCbQuery("Спочатку створи анкету!");
+  }
+  await handleSearch(ctx, user, id, true);
+});
+
+// Головне меню: редагування профілю
+bot.action("edit_profile", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.answerCbQuery("Спочатку створи анкету!");
+  }
+  await ctx.editMessageText("Що ти хочеш змінити?", editProfileMenu);
+});
+
+// Меню пошуку: лайк/дизлайк/профіль
+bot.action("like", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  await handleLikeDislike(ctx, user, "like", true);
+});
+bot.action("dislike", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  await handleLikeDislike(ctx, user, "dislike", true);
+});
+bot.action("profile", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.answerCbQuery(
+      "Ти ще не створив анкету! Натисни /start щоб почати."
+    );
+  }
+  if (!user.data.photos || user.data.photos.length === 0) {
+    return ctx.answerCbQuery("У твоїй анкеті ще немає фото.");
+  }
+  const photos = user.data.photos;
+  await ctx.replyWithMediaGroup([
+    {
+      type: "photo",
+      media: photos[0],
+      caption: prettyProfile(user),
+      parse_mode: "HTML",
+    },
+    ...photos.slice(1).map((file_id) => ({
+      type: "photo",
+      media: file_id,
+    })),
+  ]);
+  await ctx.reply("Обери дію:", mainMenu);
+  await ctx.answerCbQuery();
+});
+
+// Меню очікування лайків
+bot.action("pending_like", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (user.pendingLikes && user.pendingLikes.length > 0) {
+    const pendingId = user.pendingLikes.shift();
+    await saveUser(user);
+    const pendingUser = await loadUser(pendingId);
+    if (pendingUser) {
+      // Надсилаємо посилання обом!
+      if (user.username) {
+        await ctx.telegram.sendMessage(
+          pendingId,
+          `💞 Ви щойно отримали взаємний лайк!\n\n` +
+            `Бажаємо приємно провести час!\n` +
+            `Ось посилання на користувача: https://t.me/${user.username}`
+        );
+      }
+      if (pendingUser.username) {
+        await ctx.telegram.sendMessage(
+          user.id,
+          `💞 Ви щойно отримали взаємний лайк!\n\n` +
+            `Бажаємо приємно провести час!\n` +
+            `Користувач: https://t.me/${pendingUser.username}`
+        );
+      }
+    }
+    // Після відповіді — якщо ще є pending, одразу наступний!
+    if (user.pendingLikes.length > 0) {
+      await saveUser(user);
+      await checkPendingLikes(ctx, user);
+    } else {
+      await saveUser(user);
+      await ctx.editMessageText("Дякуємо за відповідь!", mainMenu);
+    }
+  }
+  await ctx.answerCbQuery();
+});
+bot.action("pending_dislike", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (user.pendingLikes && user.pendingLikes.length > 0) {
+    user.pendingLikes.shift();
+    await saveUser(user);
+    if (user.pendingLikes.length > 0) {
+      await checkPendingLikes(ctx, user);
+    } else {
+      await ctx.editMessageText("Дякуємо за відповідь!", mainMenu);
+    }
+  }
+  await ctx.answerCbQuery();
+});
+
+// Меню редагування профілю: поля
+bot.action("edit_name", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  user.editStep = "edit_name";
+  await saveUser(user);
+  await ctx.editMessageText("Введи нове імʼя:");
+});
+bot.action("edit_age", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  user.editStep = "edit_age";
+  await saveUser(user);
+  await ctx.editMessageText("Введи новий вік:");
+});
+bot.action("edit_city", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  user.editStep = "edit_city";
+  await saveUser(user);
+  await ctx.editMessageText("Введи нову назву міста:");
+});
+bot.action("edit_about", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  user.editStep = "edit_about";
+  await saveUser(user);
+  await ctx.editMessageText("Введи новий опис (5-200 символів):");
+});
+bot.action("edit_photos", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  user.editStep = "edit_photos";
+  user.data.photos = [];
+  await saveUser(user);
+  await ctx.editMessageText(
+    "Відправ фото одне за одним (максимум 3). Коли закінчиш — напиши 'Готово'."
+  );
+});
+bot.action("edit_back", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.editMessageText("Ти ще не створив анкету! /start — щоб почати.");
+  }
+  if (!user.data.photos || user.data.photos.length === 0) {
+    return ctx.editMessageText("У твоїй анкеті ще немає фото.");
+  }
+  const photos = user.data.photos;
+  await ctx.replyWithMediaGroup([
+    {
+      type: "photo",
+      media: photos[0],
+      caption: prettyProfile(user),
+      parse_mode: "HTML",
+    },
+    ...photos.slice(1).map((file_id) => ({
+      type: "photo",
+      media: file_id,
+    })),
+  ]);
+  await ctx.reply("Обери дію:", mainMenu);
+});
+
+// Обробка повідомлень (тільки для введення тексту/фото/етапи)
 bot.on("message", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
@@ -101,177 +325,6 @@ bot.on("message", async (ctx) => {
     await saveUser(user);
   }
   if (!user.pendingLikes) user.pendingLikes = [];
-
-  // ---- 1. Обробка pending лайків (ПЕРША!) ----
-  if (
-    ctx.message.text === "💝 Взаємно" ||
-    ctx.message.text === "❌ Відхилити"
-  ) {
-    if (user.pendingLikes.length > 0) {
-      const pendingId = user.pendingLikes.shift();
-      await saveUser(user);
-      const pendingUser = await loadUser(pendingId);
-
-      if (ctx.message.text === "💝 Взаємно" && pendingUser) {
-        // Надсилаємо посилання обом!
-        if (user.username) {
-          await ctx.telegram.sendMessage(
-            pendingId,
-            `💞 Ви щойно отримали взаємний лайк!\n\n` +
-              `Бажаємо приємно провести час!\n` +
-              `Ось посилання на користувача: https://t.me/${user.username}`
-          );
-        }
-        if (pendingUser.username) {
-          await ctx.telegram.sendMessage(
-            user.id,
-            `💞 Ви щойно отримали взаємний лайк!\n\n` +
-              `Бажаємо приємно провести час!\n` +
-              `Користувач: https://t.me/${pendingUser.username}`
-          );
-        }
-      }
-      // Після відповіді — якщо ще є pending, одразу наступний!
-      if (user.pendingLikes.length > 0) {
-        await saveUser(user);
-        return await checkPendingLikes(ctx, user);
-      }
-      // Якщо pendingLikes закінчився — стандартне меню
-      await saveUser(user);
-      return ctx.reply("Дякуємо за відповідь!", mainMenu);
-    }
-  }
-  // Якщо є pendingLikes — показати користувачу анкету наступного і чекати дію
-  if (user.pendingLikes.length > 0) {
-    return await checkPendingLikes(ctx, user);
-  }
-
-  // --- Кнопка Шукати ---
-  if (ctx.message.text === "🔍 Дивитися анкети") {
-    return await handleSearch(ctx, user, id);
-  }
-
-  // --- Кнопка Профіль ---
-  if (ctx.message.text === "⚙️ Профіль") {
-    if (!user || !user.finished) {
-      return ctx.reply(
-        "Ти ще не створив анкету! Натисни /start щоб почати.",
-        Markup.removeKeyboard()
-      );
-    }
-    if (!user.data.photos || user.data.photos.length === 0) {
-      return ctx.reply(
-        "У твоїй анкеті ще немає фото.",
-        mainMenu
-      );
-    }
-    const photos = user.data.photos;
-    await ctx.replyWithMediaGroup([
-      {
-        type: "photo",
-        media: photos[0],
-        caption: prettyProfile(user),
-        parse_mode: "HTML",
-      },
-      ...photos.slice(1).map((file_id) => ({
-        type: "photo",
-        media: file_id,
-      })),
-    ]);
-    return ctx.reply("Оберіть дію:", mainMenu);
-  }
-
-  // --- Кнопки пошуку/лайків/профілю (Пошук) ---
-  if (ctx.message.text === "💝" || ctx.message.text === "❌") {
-    await handleLikeDislike(
-      ctx,
-      user,
-      ctx.message.text === "💝" ? "like" : "dislike"
-    );
-    return;
-  }
-
-  // --- Кнопка Видалити профіль ---
-  if (ctx.message.text === "❌ Видалити профіль") {
-    if (user) {
-      await removeUser(id);
-    }
-    return ctx.reply(
-      "Профіль видалено. /start щоб створити заново.",
-      Markup.removeKeyboard()
-    );
-  }
-
-  // --- Кнопка ✏️ Редагувати профіль (Відкрити меню редагування) ---
-  if (
-    ctx.message.text === "✏️ Редагувати профіль" ||
-    ctx.message.text === "✏️ Редагувати"
-  ) {
-    if (!user || !user.finished) {
-      return ctx.reply("Спочатку створи анкету! /start");
-    }
-    return ctx.reply(
-      "Що ти хочеш змінити?",
-      Markup.keyboard([
-        ["✏️ Ім'я", "🎂 Вік", "🏠 Місто", "📝 Опис", "🤳 Фото", "⬅️ Назад"],
-      ]).resize()
-    );
-  }
-
-  // --- Меню редагування профілю ---
-  if (ctx.message.text === "✏️ Ім'я") {
-    user.editStep = "edit_name";
-    await saveUser(user);
-    return ctx.reply("Введи нове імʼя:");
-  }
-  if (ctx.message.text === "🎂 Вік") {
-    user.editStep = "edit_age";
-    await saveUser(user);
-    return ctx.reply("Введи новий вік:");
-  }
-  if (ctx.message.text === "🏠 Місто") {
-    user.editStep = "edit_city";
-    await saveUser(user);
-    return ctx.reply("Введи нову назву міста:");
-  }
-  if (ctx.message.text === "📝 Опис") {
-    user.editStep = "edit_about";
-    await saveUser(user);
-    return ctx.reply("Введи новий опис (5-200 символів):");
-  }
-  if (ctx.message.text === "🤳 Фото") {
-    user.editStep = "edit_photos";
-    user.data.photos = [];
-    await saveUser(user);
-    return ctx.reply(
-      "Відправ фото одне за одним (максимум 3). Коли закінчиш — напиши 'Готово'.",
-      Markup.keyboard([["Готово"]])
-        .oneTime()
-        .resize()
-    );
-  }
-  if (ctx.message.text === "⬅️ Назад") {
-    if (!user || !user.finished) {
-      return ctx.reply("Ти ще не створив анкету! /start — щоб почати.");
-    }
-    if (!user.data.photos || user.data.photos.length === 0) {
-      return ctx.reply("У твоїй анкеті ще немає фото.");
-    }
-    const photos = user.data.photos;
-    await ctx.replyWithMediaGroup([
-      {
-        type: "photo",
-        media: photos[0],
-        caption: prettyProfile(user),
-        parse_mode: "HTML",
-      },
-      ...photos.slice(1).map((file_id) => ({
-        type: "photo",
-        media: file_id,
-      })),
-    ]);
-    return ctx.reply("Оберіть дію:", mainMenu);
-  }
 
   // --- Блок редагування профілю ---
   if (user && user.editStep) {
@@ -283,9 +336,8 @@ bot.on("message", async (ctx) => {
         user.data.name = ctx.message.text.trim();
         user.editStep = null;
         await saveUser(user);
-        ctx.reply("Імʼя змінено ✅", mainMenu);
+        await ctx.reply("Імʼя змінено ✅", mainMenu);
         break;
-
       case "edit_age":
         {
           const age = parseInt(ctx.message.text, 10);
@@ -295,10 +347,9 @@ bot.on("message", async (ctx) => {
           user.data.age = age;
           user.editStep = null;
           await saveUser(user);
-          ctx.reply("Вік змінено ✅", mainMenu);
+          await ctx.reply("Вік змінено ✅", mainMenu);
         }
         break;
-
       case "edit_city":
         if (!ctx.message.text || ctx.message.text.length < 2) {
           return ctx.reply("Введи коректну назву міста:");
@@ -306,9 +357,8 @@ bot.on("message", async (ctx) => {
         user.data.city = ctx.message.text.trim();
         user.editStep = null;
         await saveUser(user);
-        ctx.reply("Місто змінено ✅", mainMenu);
+        await ctx.reply("Місто змінено ✅", mainMenu);
         break;
-
       case "edit_about":
         if (
           !ctx.message.text ||
@@ -320,26 +370,22 @@ bot.on("message", async (ctx) => {
         user.data.about = ctx.message.text.trim();
         user.editStep = null;
         await saveUser(user);
-        ctx.reply("Опис змінено ✅", mainMenu);
+        await ctx.reply("Опис змінено ✅", mainMenu);
         break;
-
       case "edit_photos":
         if (ctx.message.photo) {
           if (user.data.photos.length >= 3) {
-            return ctx.reply("3 фото додано. Натисни 'Готово' для завершення.");
+            return ctx.reply("3 фото додано. Напиши 'Готово' для завершення.");
           }
           const fileId =
             ctx.message.photo[ctx.message.photo.length - 1].file_id;
           user.data.photos.push(fileId);
           await saveUser(user);
           if (user.data.photos.length === 3) {
-            ctx.reply("3 фото додано. Натисни 'Готово' для завершення.");
+            await ctx.reply("3 фото додано. Напиши 'Готово' для завершення.");
           } else {
-            ctx.reply(
-              `Фото додано (${user.data.photos.length}/3). Ще додати? Надішли фото або натисни 'Готово'.`,
-              Markup.keyboard([["Готово"]])
-                .oneTime()
-                .resize()
+            await ctx.reply(
+              `Фото додано (${user.data.photos.length}/3). Ще додати? Надішли фото або напиши 'Готово'.`
             );
           }
         } else if (
@@ -347,21 +393,21 @@ bot.on("message", async (ctx) => {
           ctx.message.text.toLowerCase() === "готово"
         ) {
           if (user.data.photos.length === 0) {
-            ctx.reply("Додай мінімум одне фото!");
+            await ctx.reply("Додай мінімум одне фото!");
           } else {
             user.editStep = null;
             await saveUser(user);
-            ctx.reply("Фото оновлено ✅", mainMenu);
+            await ctx.reply("Фото оновлено ✅", mainMenu);
           }
         } else {
-          ctx.reply("Надішли фото або натисни 'Готово'.");
+          await ctx.reply("Надішли фото або напиши 'Готово'.");
         }
         break;
     }
     return;
   }
 
-  // Якщо анкета вже заповнена — реагувати на команди/пошук
+  // Якщо анкета вже заповнена — не реагувати (всі дії через інлайн)
   if (user.finished) return;
 
   // --- Заповнення анкети step-by-step ---
@@ -373,9 +419,8 @@ bot.on("message", async (ctx) => {
       user.data.name = ctx.message.text.trim();
       user.step = "age";
       await saveUser(user);
-      ctx.reply("Скільки тобі років?");
+      await ctx.reply("Скільки тобі років?");
       break;
-
     case "age":
       {
         const age = parseInt(ctx.message.text, 10);
@@ -385,10 +430,9 @@ bot.on("message", async (ctx) => {
         user.data.age = age;
         user.step = "city";
         await saveUser(user);
-        ctx.reply("В якому місті ти живеш?");
+        await ctx.reply("В якому місті ти живеш?");
       }
       break;
-
     case "city":
       if (!ctx.message.text || ctx.message.text.length < 2) {
         return ctx.reply("Введи коректну назву міста:");
@@ -396,9 +440,8 @@ bot.on("message", async (ctx) => {
       user.data.city = ctx.message.text.trim();
       user.step = "about";
       await saveUser(user);
-      ctx.reply("Розкажи про себе коротко (до 200 символів):");
+      await ctx.reply("Розкажи про себе коротко (до 200 символів):");
       break;
-
     case "about":
       if (
         !ctx.message.text ||
@@ -410,30 +453,23 @@ bot.on("message", async (ctx) => {
       user.data.about = ctx.message.text.trim();
       user.step = "photos";
       await saveUser(user);
-      ctx.reply(
-        "Додай хоча б одне фото (максимум 3).\nВідправ фото одне за одним, коли готово — натисни 'Готово'.",
-        Markup.keyboard([["Готово"]])
-          .oneTime()
-          .resize()
+      await ctx.reply(
+        "Додай хоча б одне фото (максимум 3).\nВідправ фото одне за одним, коли готово — напиши 'Готово'."
       );
       break;
-
     case "photos":
       if (ctx.message.photo) {
         if (user.data.photos.length >= 3) {
-          return ctx.reply("3 фото додано. Натисни 'Готово' для завершення.");
+          return ctx.reply("3 фото додано. Напиши 'Готово' для завершення.");
         }
         const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
         user.data.photos.push(fileId);
         await saveUser(user);
         if (user.data.photos.length === 3) {
-          ctx.reply("3 фото додано. Натисни 'Готово' для завершення.");
+          await ctx.reply("3 фото додано. Напиши 'Готово' для завершення.");
         } else {
-          ctx.reply(
-            `Фото додано (${user.data.photos.length}/3). Ще додати? Надішли фото або натисни 'Готово'.`,
-            Markup.keyboard([["Готово"]])
-              .oneTime()
-              .resize()
+          await ctx.reply(
+            `Фото додано (${user.data.photos.length}/3). Ще додати? Надішли фото або напиши 'Готово'.`
           );
         }
       } else if (
@@ -441,25 +477,25 @@ bot.on("message", async (ctx) => {
         ctx.message.text.toLowerCase() === "готово"
       ) {
         if (user.data.photos.length === 0) {
-          ctx.reply("Додай мінімум одне фото!");
+          await ctx.reply("Додай мінімум одне фото!");
         } else {
           user.finished = true;
           user.step = null;
           await saveUser(user);
-          ctx.reply("Твоя анкета готова!", mainMenu);
+          await ctx.reply("Твоя анкета готова!", mainMenu);
         }
       } else {
-        ctx.reply("Надішли фото або натисни 'Готово'.");
+        await ctx.reply("Надішли фото або напиши 'Готово'.");
       }
       break;
-
     default:
-      ctx.reply("Щось пішло не так. /start щоб почати спочатку.");
+      await ctx.reply("Щось пішло не так. /start щоб почати спочатку.");
   }
 });
 
-async function handleSearch(ctx, user, id) {
+async function handleSearch(ctx, user, id, isInline = false) {
   if (!user || !user.finished) {
+    if (isInline) return ctx.answerCbQuery("Спочатку створи свою анкету!");
     return ctx.reply("Спочатку створи свою анкету!");
   }
   const seen = user.seen || [];
@@ -469,10 +505,15 @@ async function handleSearch(ctx, user, id) {
   );
 
   if (others.length === 0) {
-    return ctx.reply(
-      "Анкет більше немає. Спробуй пізніше.",
-      mainMenu
-    );
+    if (isInline) {
+      await ctx.editMessageText(
+        "Анкет більше немає. Спробуй пізніше.",
+        mainMenu
+      );
+    } else {
+      await ctx.reply("Анкет більше немає. Спробуй пізніше.", mainMenu);
+    }
+    return;
   }
 
   const other = others[Math.floor(Math.random() * others.length)];
@@ -493,16 +534,16 @@ async function handleSearch(ctx, user, id) {
       media: file_id,
     })),
   ]);
-  await ctx.reply(
-    "Зробіть свій вибір:",
-    searchMenu
-  );
+  await ctx.reply("Зробіть свій вибір:", searchMenu);
 }
 
-async function handleLikeDislike(ctx, user, action) {
+async function handleLikeDislike(ctx, user, action, isInline = false) {
   const id = ctx.from.id;
   const otherId = user?.currentView;
-  if (!otherId) return ctx.reply("Помилка. Спробуй знову");
+  if (!otherId) {
+    if (isInline) return ctx.answerCbQuery("Помилка. Спробуй знову");
+    return ctx.reply("Помилка. Спробуй знову");
+  }
 
   user.seen = [...(user.seen || []), otherId];
   await saveUser(user);
@@ -538,8 +579,7 @@ async function handleLikeDislike(ctx, user, action) {
       }
     }
   }
-
-  await handleSearch(ctx, user, id);
+  await handleSearch(ctx, user, id, isInline);
 }
 
 // --------------------- Запуск ------------------------
