@@ -386,11 +386,8 @@ async function handleSearch(ctx, user, id) {
   );
 
   if (others.length === 0) {
-    // Приховуємо клавіатуру якщо анкет більше немає
-    return ctx.reply(
-      "Анкет більше немає. Спробуй пізніше.",
-      Markup.removeKeyboard()
-    );
+    // Показуємо головне меню якщо анкет більше немає
+    return ctx.reply("Анкет більше немає. Спробуй пізніше.", mainMenu);
   }
 
   const other = others[Math.floor(Math.random() * others.length)];
