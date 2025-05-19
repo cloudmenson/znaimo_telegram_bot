@@ -25,7 +25,7 @@ const startProfile = {
     name: "",
     age: "",
     about: "",
-    photos: []
+    photos: [],
   },
 };
 
@@ -39,7 +39,9 @@ bot.start((ctx) => {
     saveUsers(users);
     ctx.reply("Вітаю у Znaimo! Давай створимо твою анкету. Як тебе звати?");
   } else {
-    ctx.reply("Ти вже маєш анкету! /search — шукати людей, /edit — змінити анкету");
+    ctx.reply(
+      "Ти вже маєш анкету! /search — шукати людей, /edit — змінити анкету"
+    );
   }
 });
 
@@ -83,7 +85,11 @@ bot.on("message", (ctx) => {
       break;
 
     case "about":
-      if (!ctx.message.text || ctx.message.text.length < 5 || ctx.message.text.length > 200) {
+      if (
+        !ctx.message.text ||
+        ctx.message.text.length < 5 ||
+        ctx.message.text.length > 200
+      ) {
         return ctx.reply("Введи коротку інформацію про себе (5-200 символів):");
       }
       user.data.about = ctx.message.text.trim();
@@ -91,7 +97,9 @@ bot.on("message", (ctx) => {
       saveUsers(users);
       ctx.reply(
         "Додай хоча б одне фото (максимум 3).\nВідправ фото одне за одним, коли готово — натисни 'Готово'.",
-        Markup.keyboard([["Готово"]]).oneTime().resize()
+        Markup.keyboard([["Готово"]])
+          .oneTime()
+          .resize()
       );
       break;
 
@@ -99,21 +107,41 @@ bot.on("message", (ctx) => {
       if (ctx.message.photo) {
         const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
         if (user.data.photos.length >= 3) {
-          return ctx.reply("Максимум 3 фото! Натисни 'Готово', якщо всі фото додані.");
+          return ctx.reply(
+            "Максимум 3 фото! Натисни 'Готово', якщо всі фото додані."
+          );
         }
         user.data.photos.push(fileId);
         saveUsers(users);
-        ctx.reply(
-          `Фото додано (${user.data.photos.length}/3). Ще додати? Надішли фото або натисни 'Готово'.`
-        );
-      } else if (ctx.message.text === "Готово" || ctx.message.text.toLowerCase() === "готово") {
+
+        // Якщо є хоча б 1 фото — показати кнопку "Готово"
+        if (user.data.photos.length >= 1) {
+          ctx.reply(
+            `Фото додано (${user.data.photos.length}/3). Ще додати? Надішли фото або натисни 'Готово'.`,
+            Markup.keyboard([["Готово"]])
+              .oneTime()
+              .resize()
+          );
+        } else {
+          // Якщо ще немає жодного фото — звичайна клавіатура
+          ctx.reply(
+            `Фото додано (${user.data.photos.length}/3). Ще додати? Надішли фото.`
+          );
+        }
+      } else if (
+        ctx.message.text === "Готово" ||
+        ctx.message.text.toLowerCase() === "готово"
+      ) {
         if (user.data.photos.length === 0) {
           ctx.reply("Додай мінімум одне фото!");
         } else {
           user.finished = true;
           user.step = null;
           saveUsers(users);
-          ctx.reply("Твоя анкета готова! /search — шукати людей, /edit — редагувати анкету.");
+          ctx.reply(
+            "Твоя анкета готова! /search — шукати людей, /edit — редагувати анкету.",
+            Markup.removeKeyboard()
+          );
         }
       } else {
         ctx.reply("Надішли фото або натисни 'Готово'.");
@@ -137,10 +165,9 @@ bot.command("search", (ctx) => {
 
   // Знаходимо випадкову анкету (не свою і не тих, кого вже лайкнув/відхилив)
   const seen = users[id].seen || [];
-  const others = Object.entries(users)
-    .filter(
-      ([uid, u]) => uid !== String(id) && u.finished && !seen.includes(uid)
-    );
+  const others = Object.entries(users).filter(
+    ([uid, u]) => uid !== String(id) && u.finished && !seen.includes(uid)
+  );
 
   if (others.length === 0) {
     return ctx.reply("Анкет більше немає. Спробуй пізніше.");
@@ -152,17 +179,19 @@ bot.command("search", (ctx) => {
   users[id].currentView = otherId;
   saveUsers(users);
 
-  ctx.replyWithMediaGroup(
-    other.data.photos.map((file_id) => ({ type: "photo", media: file_id }))
-  ).then(() => {
-    ctx.reply(
-      `Ім'я: ${other.data.name}\nВік: ${other.data.age}\nПро себе: ${other.data.about}`,
-      Markup.inlineKeyboard([
-        Markup.button.callback("👍 Лайк", "like"),
-        Markup.button.callback("👎 Дизлайк", "dislike"),
-      ])
-    );
-  });
+  ctx
+    .replyWithMediaGroup(
+      other.data.photos.map((file_id) => ({ type: "photo", media: file_id }))
+    )
+    .then(() => {
+      ctx.reply(
+        `Ім'я: ${other.data.name}\nВік: ${other.data.age}\nПро себе: ${other.data.about}`,
+        Markup.inlineKeyboard([
+          Markup.button.callback("👍 Лайк", "like"),
+          Markup.button.callback("👎 Дизлайк", "dislike"),
+        ])
+      );
+    });
 });
 
 // --------------------- Лайк / Дизлайк ------------------------
