@@ -53,6 +53,7 @@ async function checkPendingLikes(ctx, user) {
     pendingUser.data.photos &&
     pendingUser.data.photos.length > 0
   ) {
+    // 1. Спочатку надсилаємо анкету користувача
     await ctx.replyWithMediaGroup([
       {
         type: "photo",
@@ -65,7 +66,11 @@ async function checkPendingLikes(ctx, user) {
         media: file_id,
       })),
     ]);
-    await ctx.reply("Вам хтось поставив лайк! Оберіть дію:", pendingMenu);
+    // 2. Потім надсилаємо текст з кнопками та додатковою інструкцією
+    await ctx.reply(
+      "Вам хтось поставив лайк! Оберіть дію:\n\nОсь анкета користувача:",
+      pendingMenu
+    );
   } else {
     // Якщо користувач видалив анкету — просто видаляємо з черги
     user.pendingLikes.shift();
