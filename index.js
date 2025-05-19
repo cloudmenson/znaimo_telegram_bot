@@ -31,11 +31,11 @@ function prettyProfile(user) {
   const city = user.data.city || "";
   const about = user.data.about || "";
 
-  let profileText = `<b>Ім'я:</b> ${name}\n<b>Вік:</b> ${age}\n`;
+  let profileText = `<b>• Ім'я:</b> ${name}\n<b>• Вік:</b> ${age}\n`;
   if (city) {
-    profileText += `<b>Місто:</b> ${city}\n`;
+    profileText += `<b>• Місто:</b> ${city}\n`;
   }
-  profileText += `<b>Про себе:</b> ${about}`;
+  profileText += `<b>• Про себе:</b> ${about}`;
   return profileText;
 }
 
@@ -407,6 +407,7 @@ async function handleSearch(ctx, user, id) {
     })),
   ]);
   await ctx.replyWithHTML(
+    "",
     Markup.inlineKeyboard([
       Markup.button.callback("💝", "like"),
       Markup.button.callback("❌", "dislike"),
