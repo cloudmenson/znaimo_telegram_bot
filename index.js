@@ -43,10 +43,8 @@ function prettyProfile(user) {
   return profileText;
 }
 
-// --------------------------- Мідлвар для pendingLikes ---------------------------
 async function checkPendingLikes(ctx, user) {
-  if (!user || !user.pendingLikes || user.pendingLikes.length === 0)
-    return false;
+  if (!user || !user.pendingLikes || user.pendingLikes.length === 0) return false;
   const pendingId = user.pendingLikes[0];
   const pendingUser = await loadUser(pendingId);
   if (
@@ -77,7 +75,6 @@ async function checkPendingLikes(ctx, user) {
   return true;
 }
 
-// --------------------------- Базова логіка ---------------------------
 bot.start(async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
@@ -100,7 +97,7 @@ bot.on("message", async (ctx) => {
   }
   if (!user.pendingLikes) user.pendingLikes = [];
 
-  // ---- 1. Обробка pending лайків (завжди ПЕРША!) ----
+  // ---- 1. Обробка pending лайків (ПЕРША!) ----
   if (
     ctx.message.text === "💝 Взаємно" ||
     ctx.message.text === "❌ Відхилити"
@@ -160,13 +157,7 @@ bot.on("message", async (ctx) => {
     if (!user.data.photos || user.data.photos.length === 0) {
       return ctx.reply(
         "У твоїй анкеті ще немає фото.",
-        Markup.keyboard([
-          [
-            "🔍 Дивитися анкети",
-            "✏️ Редагувати профіль",
-            "❌ Видалити профіль",
-          ],
-        ]).resize()
+        mainMenu
       );
     }
     const photos = user.data.photos;
@@ -183,11 +174,6 @@ bot.on("message", async (ctx) => {
       })),
     ]);
     return ctx.reply("Оберіть дію:", mainMenu);
-  }
-
-  // --- Кнопка Преміум ---
-  if (ctx.message.text === "⭐ Преміум") {
-    return ctx.reply("Преміум скоро буде доступний 🫡", mainMenu);
   }
 
   // --- Кнопки пошуку/лайків/профілю (Пошук) ---
@@ -333,7 +319,6 @@ bot.on("message", async (ctx) => {
         break;
 
       case "edit_photos":
-        // --- Додавання фото: максимум 3, після третього фото не пропонуємо додавати ще ---
         if (ctx.message.photo) {
           if (user.data.photos.length >= 3) {
             return ctx.reply("3 фото додано. Натисни 'Готово' для завершення.");
@@ -468,13 +453,97 @@ bot.on("message", async (ctx) => {
   }
 });
 
-// ----------- Пошук інших анкет ----------------------
-
 async function handleSearch(ctx, user, id) {
   if (!user || !user.finished) {
     return ctx.reply("Спочатку створи свою анкету!");
   }
   const seen = user.seen || [];
   const allUsers = await getAllUsers();
-  const others = allUsers;
+  const others = allUsers.filter(
+    (u) => u.id !== id && u.finished && !seen.includes(u.id)
+  );
+
+  if (others.length === 0) {
+    return ctx.reply(
+      "Анкет більше немає. Спробуй пізніше.",
+      mainMenu
+    );
+  }
+
+  const other = others[Math.floor(Math.random() * others.length)];
+
+  user.currentView = other.id;
+  await saveUser(user);
+
+  const photos = other.data.photos;
+  await ctx.replyWithMediaGroup([
+    {
+      type: "photo",
+      media: photos[0],
+      caption: prettyProfile(other),
+      parse_mode: "HTML",
+    },
+    ...photos.slice(1).map((file_id) => ({
+      type: "photo",
+      media: file_id,
+    })),
+  ]);
+  await ctx.reply(
+    "Зробіть свій вибір:",
+    searchMenu
+  );
 }
+
+async function handleLikeDislike(ctx, user, action) {
+  const id = ctx.from.id;
+  const otherId = user?.currentView;
+  if (!otherId) return ctx.reply("Помилка. Спробуй знову");
+
+  user.seen = [...(user.seen || []), otherId];
+  await saveUser(user);
+
+  const likedUser = await loadUser(otherId);
+  if (likedUser) {
+    if (action === "like") {
+      if ((likedUser.seen || []).includes(id)) {
+        try {
+          if (user.username) {
+            await ctx.telegram.sendMessage(
+              otherId,
+              `💞 Ви щойно отримали взаємний лайк!\n\n` +
+                `Бажаємо приємно провести час!\n` +
+                `Ось посилання на користувача: https://t.me/${user.username}`
+            );
+          }
+          if (likedUser.username) {
+            await ctx.telegram.sendMessage(
+              id,
+              `💞 Ви щойно отримали взаємний лайк!\n\n` +
+                `Бажаємо приємно провести час!\n` +
+                `Користувач: https://t.me/${likedUser.username}`
+            );
+          }
+        } catch (e) {}
+      } else {
+        if (!likedUser.pendingLikes) likedUser.pendingLikes = [];
+        if (!likedUser.pendingLikes.includes(id)) {
+          likedUser.pendingLikes.push(id);
+          await saveUser(likedUser);
+        }
+      }
+    }
+  }
+
+  await handleSearch(ctx, user, id);
+}
+
+// --------------------- Запуск ------------------------
+bot.launch();
+console.log("@@@@@@@@@@@ BOT IS RUNNING! @@@@@@@@@@@");
+
+const app = express();
+app.get("/", (req, res) => res.send("Znaimo bot is alive!"));
+app.listen(process.env.PORT);
+
+process.once("SIGINT", () => bot.stop("SIGINT"));
+process.once("SIGTERM", () => bot.stop("SIGTERM"));
