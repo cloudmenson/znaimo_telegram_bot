@@ -7,7 +7,7 @@ const { loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const mainMenu = Markup.keyboard([
-  ["🔍 Шукати", "⭐ Преміум", "⚙️ Профіль"],
+  ["🔍 Дивитися анкети", "⭐ Преміум", "⚙️ Профіль"],
 ]).resize();
 
 const startProfile = {
@@ -16,6 +16,7 @@ const startProfile = {
   data: {
     name: "",
     age: "",
+    city: "",
     about: "",
     photos: [],
   },
@@ -24,12 +25,30 @@ const startProfile = {
   currentView: null,
 };
 
+function prettyProfile(user) {
+  const name = user.data.name || "";
+  const age = user.data.age || "";
+  const city = user.data.city || "";
+  const about = user.data.about || "";
+  const username = user.username ? `@${user.username}` : null;
+
+  let profileText = `<b>Ім'я:</b> ${name}\n<b>Вік:</b> ${age}\n`;
+  if (city) {
+    profileText += `<b>Місто:</b> ${city}\n`;
+  }
+  if (username) {
+    profileText += `<b>Telegram:</b> ${username}\n`;
+  }
+  profileText += `<b>Про себе:</b> ${about}`;
+  return profileText;
+}
+
 bot.start(async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
 
   if (!user || !user.finished) {
-    user = { ...startProfile, id };
+    user = { ...startProfile, id, username: ctx.from.username || null };
     await saveUser(user);
     await ctx.reply("Вітаю у Znaimo! Давай створимо твою анкету.");
     await ctx.reply("Почнемо з імені. Як тебе звати?");
@@ -43,13 +62,13 @@ bot.on("message", async (ctx) => {
   let user = await loadUser(id);
 
   // --- Кнопка Шукати ---
-  if (ctx.message.text === "🔍 Шукати") {
+  if (ctx.message.text === "🔍 Дивитися анкети") {
     return await handleSearch(ctx, user, id);
   }
 
   // --- Кнопка Преміум ---
   if (ctx.message.text === "⭐ Преміум") {
-    return ctx.reply("Преміум скоро буде доступний 😉", mainMenu);
+    return ctx.reply("Преміум скоро буде доступний 🫡", mainMenu);
   }
 
   // --- Кнопка Профіль ---
@@ -66,8 +85,8 @@ bot.on("message", async (ctx) => {
     await ctx.replyWithMediaGroup(
       user.data.photos.map((file_id) => ({ type: "photo", media: file_id }))
     );
-    return ctx.reply(
-      `Твоя анкета:\n\nІм'я: ${user.data.name}\nВік: ${user.data.age}\nПро себе: ${user.data.about}`,
+    return ctx.replyWithHTML(
+      prettyProfile(user),
       Markup.keyboard([["❌ Видалити профіль", "✏️ Редагувати"]])
         .oneTime()
         .resize()
@@ -95,8 +114,9 @@ bot.on("message", async (ctx) => {
       Markup.inlineKeyboard([
         [Markup.button.callback("✏️ Ім'я", "edit_name")],
         [Markup.button.callback("🎂 Вік", "edit_age")],
+        [Markup.button.callback("🏠 Місто", "edit_city")],
         [Markup.button.callback("📝 Опис", "edit_about")],
-        [Markup.button.callback("🖼 Фото", "edit_photos")],
+        [Markup.button.callback("🤳 Фото", "edit_photos")],
       ])
     );
   }
@@ -115,14 +135,26 @@ bot.on("message", async (ctx) => {
         break;
 
       case "edit_age":
-        const age = parseInt(ctx.message.text, 10);
-        if (isNaN(age) || age < 16 || age > 99) {
-          return ctx.reply("Введи коректний вік (16-99):");
+        {
+          const age = parseInt(ctx.message.text, 10);
+          if (isNaN(age) || age < 16 || age > 99) {
+            return ctx.reply("Введи коректний вік (16-99):");
+          }
+          user.data.age = age;
+          user.editStep = null;
+          await saveUser(user);
+          ctx.reply("Вік змінено ✅", mainMenu);
         }
-        user.data.age = age;
+        break;
+
+      case "edit_city":
+        if (!ctx.message.text || ctx.message.text.length < 2) {
+          return ctx.reply("Введи коректну назву міста:");
+        }
+        user.data.city = ctx.message.text.trim();
         user.editStep = null;
         await saveUser(user);
-        ctx.reply("Вік змінено ✅", mainMenu);
+        ctx.reply("Місто змінено ✅", mainMenu);
         break;
 
       case "edit_about":
@@ -186,7 +218,7 @@ bot.on("message", async (ctx) => {
 
   // Якщо немає анкети — почати
   if (!user) {
-    user = { ...startProfile, id };
+    user = { ...startProfile, id, username: ctx.from.username || null };
     await saveUser(user);
     await ctx.reply("Вітаю у Znaimo! Давай створимо твою анкету.");
     return ctx.reply("Почнемо з імені. Як тебе звати?");
@@ -208,11 +240,23 @@ bot.on("message", async (ctx) => {
       break;
 
     case "age":
-      const age = parseInt(ctx.message.text, 10);
-      if (isNaN(age) || age < 16 || age > 99) {
-        return ctx.reply("Введи коректний вік (16-99):");
+      {
+        const age = parseInt(ctx.message.text, 10);
+        if (isNaN(age) || age < 16 || age > 99) {
+          return ctx.reply("Введи коректний вік (16-99):");
+        }
+        user.data.age = age;
+        user.step = "city";
+        await saveUser(user);
+        ctx.reply("В якому місті ти живеш?");
       }
-      user.data.age = age;
+      break;
+
+    case "city":
+      if (!ctx.message.text || ctx.message.text.length < 2) {
+        return ctx.reply("Введи коректну назву міста:");
+      }
+      user.data.city = ctx.message.text.trim();
       user.step = "about";
       await saveUser(user);
       ctx.reply("Розкажи про себе коротко (до 200 символів):");
@@ -271,7 +315,7 @@ bot.on("message", async (ctx) => {
           user.finished = true;
           user.step = null;
           await saveUser(user);
-          ctx.reply(
+          ctx.replyWithHTML(
             "Твоя анкета готова! /search — шукати людей, /edit — редагувати анкету.",
             mainMenu
           );
@@ -301,6 +345,13 @@ bot.action("edit_age", async (ctx) => {
   user.editStep = "edit_age";
   await saveUser(user);
   ctx.reply("Введи новий вік:");
+});
+bot.action("edit_city", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  user.editStep = "edit_city";
+  await saveUser(user);
+  ctx.reply("Введи нову назву міста:");
 });
 bot.action("edit_about", async (ctx) => {
   const id = ctx.from.id;
@@ -347,11 +398,11 @@ async function handleSearch(ctx, user, id) {
   await ctx.replyWithMediaGroup(
     other.data.photos.map((file_id) => ({ type: "photo", media: file_id }))
   );
-  await ctx.reply(
-    `Ім'я: ${other.data.name}\nВік: ${other.data.age}\nПро себе: ${other.data.about}`,
+  await ctx.replyWithHTML(
+    prettyProfile(other),
     Markup.inlineKeyboard([
-      Markup.button.callback("👍 Лайк", "like"),
-      Markup.button.callback("👎 Дизлайк", "dislike"),
+      Markup.button.callback("💝", "like"),
+      Markup.button.callback("❌", "dislike"),
     ])
   );
 }
@@ -364,7 +415,7 @@ bot.action("like", async (ctx) => {
   const user = await loadUser(id);
   const otherId = user?.currentView;
 
-  if (!otherId) return ctx.reply("Помилка. Спробуй знову 'Шукати'");
+  if (!otherId) return ctx.reply("Помилка. Спробуй знову");
 
   // Додаємо переглянуту анкету до seen
   user.seen = [...(user.seen || []), otherId];
@@ -381,10 +432,42 @@ bot.action("like", async (ctx) => {
     if ((likedUser.seen || []).includes(id)) {
       // Взаємний лайк — повідомити обох
       try {
-        await ctx.telegram.sendMessage(otherId, "У вас взаємний лайк! 🎉");
+        const tgUsernameLiked = likedUser.username ? `https://t.me/${likedUser.username}` : null;
+        const tgUsernameUser = user.username ? `https://t.me/${user.username}` : null;
+
+        const buttonsForLiked = tgUsernameUser
+          ? Markup.inlineKeyboard([
+              Markup.button.url("Написати в Telegram", tgUsernameUser),
+            ])
+          : undefined;
+
+        const buttonsForUser = tgUsernameLiked
+          ? Markup.inlineKeyboard([
+              Markup.button.url("Написати в Telegram", tgUsernameLiked),
+            ])
+          : undefined;
+
+        await ctx.telegram.sendMessage(
+          otherId,
+          `У вас взаємний лайк! 🎉\n\n${prettyProfile(user)}`,
+          { parse_mode: "HTML", ...buttonsForLiked }
+        );
       } catch (e) {}
       try {
-        await ctx.telegram.sendMessage(id, "У вас взаємний лайк! 🎉");
+        const tgUsernameUser = user.username ? `https://t.me/${user.username}` : null;
+        const tgUsernameLiked = likedUser.username ? `https://t.me/${likedUser.username}` : null;
+
+        const buttonsForUser = tgUsernameLiked
+          ? Markup.inlineKeyboard([
+              Markup.button.url("Написати в Telegram", tgUsernameLiked),
+            ])
+          : undefined;
+
+        await ctx.telegram.sendMessage(
+          id,
+          `У вас взаємний лайк! 🎉\n\n${prettyProfile(likedUser)}`,
+          { parse_mode: "HTML", ...buttonsForUser }
+        );
       } catch (e) {}
     } else {
       // Просто повідомлення власнику анкети
@@ -403,7 +486,7 @@ bot.action("dislike", async (ctx) => {
   const user = await loadUser(id);
   const otherId = user?.currentView;
 
-  if (!otherId) return ctx.reply("Помилка. Спробуй знову 'Шукати'");
+  if (!otherId) return ctx.reply("Помилка. Спробуй знову");
 
   // Додаємо переглянуту анкету до seen
   user.seen = [...(user.seen || []), otherId];
@@ -428,8 +511,9 @@ bot.command("edit", async (ctx) => {
       Markup.inlineKeyboard([
         [Markup.button.callback("✏️ Ім'я", "edit_name")],
         [Markup.button.callback("🎂 Вік", "edit_age")],
+        [Markup.button.callback("🏠 Місто", "edit_city")],
         [Markup.button.callback("📝 Опис", "edit_about")],
-        [Markup.button.callback("🖼 Фото", "edit_photos")],
+        [Markup.button.callback("🤳 Фото", "edit_photos")],
       ])
     );
   }
@@ -450,8 +534,8 @@ bot.command("profile", async (ctx) => {
   await ctx.replyWithMediaGroup(
     user.data.photos.map((file_id) => ({ type: "photo", media: file_id }))
   );
-  ctx.reply(
-    `Твоя анкета:\n\nІм'я: ${user.data.name}\nВік: ${user.data.age}\nПро себе: ${user.data.about}`,
+  ctx.replyWithHTML(
+    prettyProfile(user),
     Markup.keyboard([["❌ Видалити профіль", "✏️ Редагувати"]])
       .oneTime()
       .resize()
