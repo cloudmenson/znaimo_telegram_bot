@@ -1,21 +1,10 @@
 const express = require("express");
 const { Telegraf, Markup } = require("telegraf");
-const fs = require("fs");
 require("dotenv").config();
 
+const { loadUser, saveUser, getAllUsers } = require("./mongo");
+
 const bot = new Telegraf(process.env.BOT_TOKEN);
-const USERS_FILE = "./users.json";
-
-// --------------------- Helpers ------------------------
-
-const loadUsers = () => {
-  if (!fs.existsSync(USERS_FILE)) return {};
-  return JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
-};
-
-const saveUsers = (users) => {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-};
 
 // --------------------- Анкета логіка ------------------------
 
@@ -31,12 +20,12 @@ const startProfile = {
 
 // --------------------- Bot logic ------------------------
 
-bot.start((ctx) => {
-  const users = loadUsers();
+bot.start(async (ctx) => {
   const id = ctx.from.id;
-  if (!users[id] || !users[id].finished) {
-    users[id] = { ...startProfile, finished: false };
-    saveUsers(users);
+  let user = await loadUser(id);
+  if (!user || !user.finished) {
+    user = { ...startProfile, finished: false, _id: id.toString() };
+    await saveUser(user);
     ctx.reply("Вітаю у Znaimo! Давай створимо твою анкету. Як тебе звати?");
   } else {
     ctx.reply(
@@ -46,17 +35,16 @@ bot.start((ctx) => {
 });
 
 // Головний обробник
-bot.on("message", (ctx) => {
-  const users = loadUsers();
+bot.on("message", async (ctx) => {
   const id = ctx.from.id;
+  let user = await loadUser(id);
 
   // Якщо немає анкети — почати
-  if (!users[id]) {
-    users[id] = { ...startProfile };
-    saveUsers(users);
+  if (!user) {
+    user = { ...startProfile, _id: id.toString() };
+    await saveUser(user);
     return ctx.reply("Почнемо з імені. Як тебе звати?");
   }
-  const user = users[id];
 
   // Якщо анкета вже заповнена — реагувати на команди/пошук
   if (user.finished) return;
@@ -69,7 +57,7 @@ bot.on("message", (ctx) => {
       }
       user.data.name = ctx.message.text.trim();
       user.step = "age";
-      saveUsers(users);
+      await saveUser(user);
       ctx.reply("Скільки тобі років?");
       break;
 
@@ -80,7 +68,7 @@ bot.on("message", (ctx) => {
       }
       user.data.age = age;
       user.step = "about";
-      saveUsers(users);
+      await saveUser(user);
       ctx.reply("Розкажи про себе коротко (до 200 символів):");
       break;
 
@@ -94,7 +82,7 @@ bot.on("message", (ctx) => {
       }
       user.data.about = ctx.message.text.trim();
       user.step = "photos";
-      saveUsers(users);
+      await saveUser(user);
       ctx.reply(
         "Додай хоча б одне фото (максимум 3).\nВідправ фото одне за одним, коли готово — натисни 'Готово'.",
         Markup.keyboard([["Готово"]])
@@ -112,7 +100,7 @@ bot.on("message", (ctx) => {
           );
         }
         user.data.photos.push(fileId);
-        saveUsers(users);
+        await saveUser(user);
 
         // Якщо є хоча б 1 фото — показати кнопку "Готово"
         if (user.data.photos.length >= 1) {
@@ -137,7 +125,7 @@ bot.on("message", (ctx) => {
         } else {
           user.finished = true;
           user.step = null;
-          saveUsers(users);
+          await saveUser(user);
           ctx.reply(
             "Твоя анкета готова! /search — шукати людей, /edit — редагувати анкету.",
             Markup.removeKeyboard()
@@ -155,29 +143,30 @@ bot.on("message", (ctx) => {
 
 // --------------------- Пошук інших анкет ------------------------
 
-bot.command("search", (ctx) => {
-  const users = loadUsers();
+bot.command("search", async (ctx) => {
   const id = ctx.from.id;
+  const user = await loadUser(id);
 
-  if (!users[id] || !users[id].finished) {
+  if (!user || !user.finished) {
     return ctx.reply("Спочатку створи свою анкету!");
   }
 
   // Знаходимо випадкову анкету (не свою і не тих, кого вже лайкнув/відхилив)
-  const seen = users[id].seen || [];
-  const others = Object.entries(users).filter(
-    ([uid, u]) => uid !== String(id) && u.finished && !seen.includes(uid)
+  const seen = user.seen || [];
+  const allUsers = await getAllUsers();
+  const others = allUsers.filter(
+    (u) => u._id !== id.toString() && u.finished && !seen.includes(u._id)
   );
 
   if (others.length === 0) {
     return ctx.reply("Анкет більше немає. Спробуй пізніше.");
   }
 
-  const [otherId, other] = others[Math.floor(Math.random() * others.length)];
+  const other = others[Math.floor(Math.random() * others.length)];
 
   // Запамʼятовуємо, що показали цю анкету
-  users[id].currentView = otherId;
-  saveUsers(users);
+  user.currentView = other._id;
+  await saveUser(user);
 
   ctx
     .replyWithMediaGroup(
@@ -196,57 +185,55 @@ bot.command("search", (ctx) => {
 
 // --------------------- Лайк / Дизлайк ------------------------
 
-bot.action("like", (ctx) => {
-  const users = loadUsers();
+bot.action("like", async (ctx) => {
   const id = ctx.from.id;
-  const otherId = users[id].currentView;
+  const user = await loadUser(id);
+  const otherId = user?.currentView;
 
   if (!otherId) return ctx.reply("Помилка. Спробуй /search");
 
-  users[id].seen = [...(users[id].seen || []), otherId];
-  saveUsers(users);
+  user.seen = [...(user.seen || []), otherId];
+  await saveUser(user);
   ctx.reply("Тобі сподобалася анкета!");
   ctx.deleteMessage();
 });
 
-bot.action("dislike", (ctx) => {
-  const users = loadUsers();
+bot.action("dislike", async (ctx) => {
   const id = ctx.from.id;
-  const otherId = users[id].currentView;
+  const user = await loadUser(id);
+  const otherId = user?.currentView;
 
   if (!otherId) return ctx.reply("Помилка. Спробуй /search");
 
-  users[id].seen = [...(users[id].seen || []), otherId];
-  saveUsers(users);
+  user.seen = [...(user.seen || []), otherId];
+  await saveUser(user);
   ctx.reply("Анкета відхилена.");
   ctx.deleteMessage();
 });
 
 // --------------------- edit profile ------------------------
 
-bot.command("edit", (ctx) => {
-  const users = loadUsers();
+bot.command("edit", async (ctx) => {
   const id = ctx.from.id;
-  if (!users[id]) {
+  let user = await loadUser(id);
+  if (!user) {
     ctx.reply("У тебе ще немає анкети! /start");
   } else {
-    users[id] = { ...startProfile, finished: false };
-    saveUsers(users);
+    user = { ...startProfile, finished: false, _id: id.toString() };
+    await saveUser(user);
     ctx.reply("Редагуємо анкету. Як тебе звати?");
   }
 });
 
 // --------------------- user profile ------------------------
 
-bot.command("profile", (ctx) => {
-  const users = loadUsers();
+bot.command("profile", async (ctx) => {
   const id = ctx.from.id;
+  const user = await loadUser(id);
 
-  if (!users[id] || !users[id].finished) {
+  if (!user || !user.finished) {
     return ctx.reply("Ти ще не створив анкету! /start — щоб почати.");
   }
-
-  const user = users[id];
 
   if (!user.data.photos || user.data.photos.length === 0) {
     return ctx.reply("У твоїй анкеті ще немає фото.");
