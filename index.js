@@ -6,6 +6,7 @@ const { loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
+// Видалено старе головне меню для пошуку анкет
 const mainMenu = Markup.keyboard([
   ["🔍 Дивитися анкети", "⭐ Преміум", "⚙️ Профіль"],
 ]).resize();
@@ -92,6 +93,7 @@ bot.on("message", async (ctx) => {
       })),
     ]);
     return ctx.replyWithHTML(
+      "",
       Markup.keyboard([["✏️ Редагувати", "❌ Видалити профіль"]])
         .oneTime()
         .resize()
@@ -385,7 +387,11 @@ async function handleSearch(ctx, user, id) {
   );
 
   if (others.length === 0) {
-    return ctx.reply("Анкет більше немає. Спробуй пізніше.");
+    // Приховуємо клавіатуру якщо анкет більше немає
+    return ctx.reply(
+      "Анкет більше немає. Спробуй пізніше.",
+      Markup.removeKeyboard()
+    );
   }
 
   const other = others[Math.floor(Math.random() * others.length)];
@@ -406,13 +412,8 @@ async function handleSearch(ctx, user, id) {
       media: file_id,
     })),
   ]);
-  await ctx.replyWithHTML(
-    "",
-    Markup.inlineKeyboard([
-      Markup.button.callback("💝", "like"),
-      Markup.button.callback("❌", "dislike"),
-    ])
-  );
+  // Надсилаємо нову клавіатуру знизу!
+  await ctx.reply("", Markup.keyboard([["💝", "❌"]]).resize());
 }
 
 // ----------- Лайк / Дизлайк ----------------------
@@ -535,6 +536,7 @@ bot.action("profile_back", async (ctx) => {
     })),
   ]);
   await ctx.replyWithHTML(
+    "",
     Markup.keyboard([["✏️ Редагувати", "❌ Видалити профіль"]])
       .oneTime()
       .resize()
