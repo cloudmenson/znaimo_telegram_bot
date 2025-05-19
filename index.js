@@ -117,6 +117,7 @@ bot.on("message", async (ctx) => {
         [Markup.button.callback("🏠 Місто", "edit_city")],
         [Markup.button.callback("📝 Опис", "edit_about")],
         [Markup.button.callback("🤳 Фото", "edit_photos")],
+        [Markup.button.callback("⬅️ Назад", "profile_back")],
       ])
     );
   }
@@ -493,9 +494,31 @@ bot.command("edit", async (ctx) => {
         [Markup.button.callback("🏠 Місто", "edit_city")],
         [Markup.button.callback("📝 Опис", "edit_about")],
         [Markup.button.callback("🤳 Фото", "edit_photos")],
+        [Markup.button.callback("⬅️ Назад", "profile_back")],
       ])
     );
   }
+});
+
+// ----------- Обробник "⬅️ Назад" у меню редагування профілю -----------
+bot.action("profile_back", async (ctx) => {
+  const id = ctx.from.id;
+  const user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.reply("Ти ще не створив анкету! /start — щоб почати.");
+  }
+  if (!user.data.photos || user.data.photos.length === 0) {
+    return ctx.reply("У твоїй анкеті ще немає фото.");
+  }
+  await ctx.replyWithMediaGroup(
+    user.data.photos.map((file_id) => ({ type: "photo", media: file_id }))
+  );
+  await ctx.replyWithHTML(
+    prettyProfile(user),
+    Markup.keyboard([["❌ Видалити профіль", "✏️ Редагувати"]])
+      .oneTime()
+      .resize()
+  );
 });
 
 // --------------------- /profile ------------------------
