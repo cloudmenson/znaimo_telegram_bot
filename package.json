@@ -1,7 +1,9 @@
 {
-  "name": "znaimo-bot",
+  "name": "znaimo_telegram_bot",
   "version": "1.0.0",
   "main": "index.js",
+  "author": "cloudmenson",
+  "license": "ISC",
   "scripts": {
     "start": "node index.js"
   },
