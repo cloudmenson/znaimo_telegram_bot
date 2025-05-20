@@ -860,7 +860,14 @@ const WEBHOOK_URL = `https://${
   process.env.RENDER_EXTERNAL_HOSTNAME || "your-app-name.onrender.com"
 }${WEBHOOK_PATH}`;
 
+// Встановлюємо список команд бота
 (async () => {
+  await bot.telegram.setMyCommands([
+    { command: 'profile', description: '📝 Мій профіль' },
+    { command: 'referral', description: '🎁 Реферальна система' },
+    { command: 'privacy', description: '🔒 Політика приватності' },
+    { command: 'blacklist', description: '🚫 Додати в чорний список' }
+  ]);
   await bot.telegram.setWebhook(WEBHOOK_URL);
 })();
 
