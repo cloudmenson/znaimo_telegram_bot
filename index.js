@@ -7,6 +7,16 @@ const { loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
+// Глобальний middleware для показу “typing” перед кожним повідомленням
+bot.use(async (ctx, next) => {
+  try {
+    await ctx.sendChatAction("typing");
+  } catch (e) {
+    console.error("ChatAction ERROR", e);
+  }
+  return next();
+});
+
 // Глобальний обробник помилок Telegraf
 bot.catch((err, ctx) => {
   console.error("BOT ERROR", err);
@@ -141,9 +151,6 @@ async function checkPendingLikes(ctx, user) {
 }
 
 bot.start(async (ctx) => {
-  // Показуємо, що бот щось робить
-  await ctx.sendChatAction("typing");
-
   const id = ctx.from.id;
   let user = await loadUser(id);
   if (!user || !user.finished) {
