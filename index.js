@@ -778,7 +778,11 @@ async function handleSearch(ctx, user, id, isInline = false) {
     const seen = user.seen || [];
     const allUsers = await getAllUsers();
     const others = allUsers.filter(
-      (u) => u.id !== id && u.finished && !seen.includes(u.id)
+      (u) =>
+        u.id !== id &&
+        u.finished &&
+        !seen.includes(u.id) &&
+        u.id !== user.currentView
     );
 
     if (others.length === 0) {
@@ -877,6 +881,9 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
             id,
             `💞 У вас взаємний лайк з @${likedUser.username || likedUser.id}!`
           );
+          // Reset currentView after mutual like so profile doesn't reappear
+          user.currentView = null;
+          await saveUser(user);
           // After mutual like, return and do not proceed to search
           return;
         } else {
