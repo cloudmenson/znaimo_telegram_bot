@@ -724,6 +724,8 @@ async function handleSearch(ctx, user, id, isInline = false) {
     );
 
     if (others.length === 0) {
+      user.currentView = null; // <--- reset
+      await saveUser(user);
       if (isInline) {
         await ctx.editMessageText(
           "Анкет більше немає. Спробуй пізніше.",
@@ -764,10 +766,13 @@ async function handleSearch(ctx, user, id, isInline = false) {
 bot.hears("💝", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
+  // Додаємо автоматичний пошук, якщо currentView втрачено:
   if (!user || !user.currentView) {
-    return ctx.reply(
-      "Немає анкети для оцінки. Спробуй ще раз через “Дивитися анкети”."
+    await ctx.reply(
+      "Немає анкети для оцінки. Натисніть «Дивитися анкети», щоб знайти нову."
     );
+    // Відразу пропонуємо новий пошук:
+    return await handleSearch(ctx, user, id, false);
   }
   await handleLikeDislike(ctx, user, "like", false);
 });
@@ -777,9 +782,10 @@ bot.hears("❌", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
   if (!user || !user.currentView) {
-    return ctx.reply(
-      "Немає анкети для оцінки. Спробуй ще раз через “Дивитися анкети”."
+    await ctx.reply(
+      "Немає анкети для оцінки. Натисніть «Дивитися анкети», щоб знайти нову."
     );
+    return await handleSearch(ctx, user, id, false);
   }
   await handleLikeDislike(ctx, user, "dislike", false);
 });
@@ -789,18 +795,21 @@ bot.hears("⚙️ Профіль", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
   if (!user || !user.currentView) {
-    return ctx.reply(
-      "Немає анкети для перегляду профілю. Спробуй ще раз через “Дивитися анкети”."
+    await ctx.reply(
+      "Немає анкети для перегляду профілю. Спробуйте ще раз через “Дивитися анкети”."
     );
+    return await handleSearch(ctx, user, id, false);
   }
   const otherUser = await loadUser(user.currentView);
   if (!otherUser) {
-    return ctx.reply(
-      "Не знайдено анкету. Спробуй ще раз через “Дивитися анкети”."
+    await ctx.reply(
+      "Не знайдено анкету. Спробуйте ще раз через “Дивитися анкети”."
     );
+    return await handleSearch(ctx, user, id, false);
   }
   if (!otherUser.data.photos || otherUser.data.photos.length === 0) {
-    return ctx.reply("У цього користувача немає фото.");
+    await ctx.reply("У цього користувача немає фото.");
+    return await handleSearch(ctx, user, id, false);
   }
   const photos = otherUser.data.photos;
   await ctx.replyWithMediaGroup([
