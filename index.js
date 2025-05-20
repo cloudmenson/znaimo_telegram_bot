@@ -8,8 +8,8 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // Глобальний обробник помилок Telegraf
 bot.catch((err, ctx) => {
-  console.error('BOT ERROR', err);
-  ctx.reply('Виникла технічна помилка. Спробуйте ще раз.');
+  console.error("BOT ERROR", err);
+  ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
 });
 
 // Основні меню як звичайна клавіатура
@@ -19,15 +19,11 @@ const mainMenu = Markup.keyboard([
   .resize()
   .oneTime(false);
 
-const searchMenu = Markup.keyboard([
-  ["💝", "❌", "⚙️ Профіль"],
-])
+const searchMenu = Markup.keyboard([["💝", "❌", "⚙️ Профіль"]])
   .resize()
   .oneTime(false);
 
-const pendingMenu = Markup.keyboard([
-  ["💝 Взаємно", "❌ Відхилити"],
-])
+const pendingMenu = Markup.keyboard([["💝 Взаємно", "❌ Відхилити"]])
   .resize()
   .oneTime(false);
 
@@ -44,7 +40,7 @@ const editProfileMenu = Markup.inlineKeyboard([
   [
     Markup.button.callback("🤳 Фото", "edit_photos"),
     Markup.button.callback("⬅️ Назад", "edit_back"),
-  ]
+  ],
 ]);
 
 const startProfile = {
@@ -158,6 +154,50 @@ bot.action("create_profile", async (ctx) => {
   }
 });
 
+bot.command("find", async (ctx) => {
+  // Дія як bot.action("search")
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.reply("Спочатку створи анкету через /start");
+  }
+  await handleSearch(ctx, user, id, false);
+});
+
+bot.command("profile", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.reply("Ти ще не створив анкету! Натисни /start щоб почати.");
+  }
+  if (!user.data.photos || user.data.photos.length === 0) {
+    return ctx.reply("У твоїй анкеті ще немає фото.");
+  }
+  const photos = user.data.photos;
+  await ctx.replyWithMediaGroup([
+    {
+      type: "photo",
+      media: photos[0],
+      caption: prettyProfile(user),
+      parse_mode: "HTML",
+    },
+    ...photos.slice(1).map((file_id) => ({
+      type: "photo",
+      media: file_id,
+    })),
+  ]);
+  await ctx.reply("Обери дію:", mainMenu);
+});
+
+bot.command("edit", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.reply("Спочатку створи анкету через /start");
+  }
+  await ctx.reply("Що ти хочеш змінити?", editProfileMenu);
+});
+
 // Головне меню: пошук
 bot.action("search", async (ctx) => {
   try {
@@ -174,6 +214,24 @@ bot.action("search", async (ctx) => {
     console.error("SEARCH ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
   }
+});
+
+bot.hears("🔍 Дивитися анкети", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.reply("Спочатку створи анкету через /start");
+  }
+  await handleSearch(ctx, user, id, false);
+});
+
+bot.hears("✏️ Редагувати профіль", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.reply("Спочатку створи анкету через /start");
+  }
+  await ctx.reply("Що ти хочеш змінити?", editProfileMenu);
 });
 
 // Головне меню: редагування профілю
@@ -418,10 +476,14 @@ bot.action("edit_back", async (ctx) => {
     const id = ctx.from.id;
     let user = await loadUser(id);
     if (!user) {
-      return ctx.editMessageText("Ти ще не створив анкету! /start — щоб почати.");
+      return ctx.editMessageText(
+        "Ти ще не створив анкету! /start — щоб почати."
+      );
     }
     if (!user.finished) {
-      return ctx.editMessageText("Ти ще не створив анкету! /start — щоб почати.");
+      return ctx.editMessageText(
+        "Ти ще не створив анкету! /start — щоб почати."
+      );
     }
     if (!user.data.photos || user.data.photos.length === 0) {
       return ctx.editMessageText("У твоїй анкеті ще немає фото.");
@@ -507,14 +569,18 @@ bot.on("message", async (ctx) => {
           case "edit_photos":
             if (ctx.message.photo) {
               if (user.data.photos.length >= 3) {
-                return ctx.reply("3 фото додано. Напиши 'Готово' для завершення.");
+                return ctx.reply(
+                  "3 фото додано. Напиши 'Готово' для завершення."
+                );
               }
               const fileId =
                 ctx.message.photo[ctx.message.photo.length - 1].file_id;
               user.data.photos.push(fileId);
               await saveUser(user);
               if (user.data.photos.length === 3) {
-                await ctx.reply("3 фото додано. Напиши 'Готово' для завершення.");
+                await ctx.reply(
+                  "3 фото додано. Напиши 'Готово' для завершення."
+                );
               } else {
                 await ctx.reply(
                   `Фото додано (${user.data.photos.length}/3). Ще додати? Надішли фото або напиши 'Готово'.`
@@ -586,7 +652,9 @@ bot.on("message", async (ctx) => {
             ctx.message.text.length < 5 ||
             ctx.message.text.length > 200
           ) {
-            return ctx.reply("Введи коротку інформацію про себе (5-200 символів):");
+            return ctx.reply(
+              "Введи коротку інформацію про себе (5-200 символів):"
+            );
           }
           user.data.about = ctx.message.text.trim();
           user.step = "photos";
@@ -598,9 +666,12 @@ bot.on("message", async (ctx) => {
         case "photos":
           if (ctx.message.photo) {
             if (user.data.photos.length >= 3) {
-              return ctx.reply("3 фото додано. Напиши 'Готово' для завершення.");
+              return ctx.reply(
+                "3 фото додано. Напиши 'Готово' для завершення."
+              );
             }
-            const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+            const fileId =
+              ctx.message.photo[ctx.message.photo.length - 1].file_id;
             user.data.photos.push(fileId);
             await saveUser(user);
             if (user.data.photos.length === 3) {
