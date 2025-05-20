@@ -25,6 +25,10 @@ bot.catch((err, ctx) => {
 
 // Привітальне повідомлення для нових користувачів
 bot.on("message", async (ctx, next) => {
+  // Пропустити команди, щоб не блокувати /start та інші
+  if (ctx.message.text && ctx.message.text.startsWith("/")) {
+    return next();
+  }
   const id = ctx.from.id;
   const user = await loadUser(id);
   if (!user) {
