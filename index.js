@@ -603,11 +603,11 @@ bot.on("message", async (ctx, next) => {
             await saveUser(user);
             await ctx.reply("Опис змінено ✅", mainMenu);
             break;
-          case "edit_photos":
+        case "edit_photos":
             if (ctx.message.photo) {
               if (user.data.photos.length >= 3) {
                 return ctx.reply(
-                  "3 фото додано. Напиши 'Готово' для завершення."
+                  "3 фото додано. Ви не можете додати більше."
                 );
               }
               const fileId =
@@ -616,26 +616,15 @@ bot.on("message", async (ctx, next) => {
               await saveUser(user);
               if (user.data.photos.length === 3) {
                 await ctx.reply(
-                  "3 фото додано. Напиши 'Готово' для завершення."
+                  "3 фото додано. Ви не можете додати більше."
                 );
               } else {
                 await ctx.reply(
-                  `Фото додано (${user.data.photos.length}/3). Ще додати? Надішли фото або напиши 'Готово'.`
+                  `Фото додано (${user.data.photos.length}/3). Ви можете додати ще фото.`
                 );
               }
-            } else if (
-              ctx.message.text === "Готово" ||
-              ctx.message.text.toLowerCase() === "готово"
-            ) {
-              if (user.data.photos.length === 0) {
-                await ctx.reply("Додай мінімум одне фото!");
-              } else {
-                user.editStep = null;
-                await saveUser(user);
-                await ctx.reply("Фото оновлено ✅", mainMenu);
-              }
             } else {
-              await ctx.reply("Надішли фото або напиши 'Готово'.");
+              await ctx.reply("Надішли фото.");
             }
             break;
         }
@@ -696,47 +685,56 @@ bot.on("message", async (ctx, next) => {
           user.data.about = ctx.message.text.trim();
           user.step = "photos";
           await saveUser(user);
+          // Show inline buttons for photo upload
           await ctx.reply(
-            "📸 Додай хоча б одне фото (максимум 3).\nВідправ фото одне за одним, коли готово — напиши 'Готово'."
+            `📸 Додай фото (до 3).`,
+            Markup.inlineKeyboard([
+              Markup.button.callback("📷 Завантажити фото", "add_photo"),
+              Markup.button.callback("✅ Готово", "done_photos")
+            ])
           );
           break;
         case "photos":
-          if (ctx.message.photo) {
-            if (user.data.photos.length >= 3) {
-              return ctx.reply(
-                "3 фото додано. Напиши 'Готово' для завершення."
-              );
-            }
-            const fileId =
-              ctx.message.photo[ctx.message.photo.length - 1].file_id;
-            user.data.photos.push(fileId);
+          // First time entering photos step
+          if (user.data.photos.length === 0) {
+            user.step = null;
+            user.editStep = "photos";
             await saveUser(user);
-            if (user.data.photos.length === 3) {
-              await ctx.reply("3 фото додано. Напиши 'Готово' для завершення.");
-            } else {
-              await ctx.reply(
-                `Фото додано (${user.data.photos.length}/3). Ще додати? Надішли фото або напиши 'Готово'.`
-              );
-            }
-          } else if (
-            ctx.message.text === "Готово" ||
-            ctx.message.text.toLowerCase() === "готово"
-          ) {
-            if (user.data.photos.length === 0) {
-              await ctx.reply("Додай мінімум одне фото!");
-            } else {
-              user.finished = true;
-              user.step = null;
-              await saveUser(user);
-              await ctx.reply("Твоя анкета готова!", mainMenu);
-            }
-          } else {
-            await ctx.reply("Надішли фото або напиши 'Готово'.");
+            return await ctx.reply(
+              `📸 Додай фото (до 3).`,
+              Markup.inlineKeyboard([
+                Markup.button.callback("📷 Завантажити фото", "add_photo"),
+                Markup.button.callback("✅ Готово", "done_photos")
+              ])
+            );
           }
           break;
         default:
           await ctx.reply("Щось пішло не так. /start щоб почати спочатку.");
       }
+// Додати ще фото
+bot.action("add_photo", async (ctx) => {
+  const id = ctx.from.id;
+  const user = await loadUser(id);
+  user.editStep = "photos";
+  await saveUser(user);
+  await ctx.answerCbQuery(); // remove loading
+  await ctx.reply("📸 Надішли фото (1–3).");
+});
+
+// Завершити додавання фото
+bot.action("done_photos", async (ctx) => {
+  const id = ctx.from.id;
+  const user = await loadUser(id);
+  await ctx.answerCbQuery(); // remove loading
+  if (user.data.photos.length === 0) {
+    return await ctx.reply("Додай хоча б одне фото!");
+  }
+  user.finished = true;
+  user.step = null;
+  await saveUser(user);
+  await ctx.reply("✅ Фото додано та анкета завершена!", mainMenu);
+});
     } catch (e) {
       console.error("STEP MESSAGE ERROR:", e);
       await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
