@@ -793,24 +793,31 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
     if (likedUser) {
       if (action === "like") {
         if ((likedUser.seen || []).includes(id)) {
-          try {
-            if (user.username) {
-              await ctx.telegram.sendMessage(
-                otherId,
-                `💞 Ви щойно отримали взаємний лайк!\n\n` +
-                  `Бажаємо приємно провести час!\n` +
-                  `Ось посилання на користувача: https://t.me/${user.username}`
-              );
-            }
-            if (likedUser.username) {
-              await ctx.telegram.sendMessage(
-                id,
-                `💞 Ви щойно отримали взаємний лайк!\n\n` +
-                  `Бажаємо приємно провести час!\n` +
-                  `Користувач: https://t.me/${likedUser.username}`
-              );
-            }
-          } catch (e) {}
+          // Mutual like: notify both users
+          // Notify likedUser (otherId)
+          await ctx.telegram.sendMessage(
+            otherId,
+            `💞 Ви щойно отримали взаємний лайк!\n\n` +
+              `Бажаємо приємно провести час!\n` +
+              `Ось посилання на вашого матчера: ` +
+              (user.username
+                ? `https://t.me/${user.username}`
+                : `tg://user?id=${user.id}`)
+          );
+
+          // Notify the liker (current user)
+          await ctx.telegram.sendMessage(
+            id,
+            `💞 Ви щойно отримали взаємний лайк!\n\n` +
+              `Бажаємо приємно провести час!\n` +
+              `Ось посилання на вашого матчера: ` +
+              (likedUser.username
+                ? `https://t.me/${likedUser.username}`
+                : `tg://user?id=${likedUser.id}`)
+          );
+
+          // After mutual like, return and do not proceed to search
+          return;
         } else {
           if (!likedUser.pendingLikes) likedUser.pendingLikes = [];
           if (!likedUser.pendingLikes.includes(user.id)) {
