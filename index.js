@@ -760,6 +760,63 @@ async function handleSearch(ctx, user, id, isInline = false) {
   }
 }
 
+// Лайк анкети через клавіатуру
+bot.hears("💝", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.currentView) {
+    return ctx.reply(
+      "Немає анкети для оцінки. Спробуй ще раз через “Дивитися анкети”."
+    );
+  }
+  await handleLikeDislike(ctx, user, "like", false);
+});
+
+// Дизлайк анкети через клавіатуру
+bot.hears("❌", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.currentView) {
+    return ctx.reply(
+      "Немає анкети для оцінки. Спробуй ще раз через “Дивитися анкети”."
+    );
+  }
+  await handleLikeDislike(ctx, user, "dislike", false);
+});
+
+// Показати профіль іншого користувача через клавіатуру
+bot.hears("⚙️ Профіль", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.currentView) {
+    return ctx.reply(
+      "Немає анкети для перегляду профілю. Спробуй ще раз через “Дивитися анкети”."
+    );
+  }
+  const otherUser = await loadUser(user.currentView);
+  if (!otherUser) {
+    return ctx.reply(
+      "Не знайдено анкету. Спробуй ще раз через “Дивитися анкети”."
+    );
+  }
+  if (!otherUser.data.photos || otherUser.data.photos.length === 0) {
+    return ctx.reply("У цього користувача немає фото.");
+  }
+  const photos = otherUser.data.photos;
+  await ctx.replyWithMediaGroup([
+    {
+      type: "photo",
+      media: photos[0],
+      caption: prettyProfile(otherUser),
+      parse_mode: "HTML",
+    },
+    ...photos.slice(1).map((file_id) => ({
+      type: "photo",
+      media: file_id,
+    })),
+  ]);
+});
+
 async function handleLikeDislike(ctx, user, action, isInline = false) {
   try {
     if (!user || !user.currentView) {
