@@ -100,10 +100,7 @@ async function checkPendingLikes(ctx, user) {
         })),
       ]);
       // 2. Потім надсилаємо текст з кнопками та додатковою інструкцією
-      await ctx.reply(
-        "Вам хтось поставив лайк! Оберіть дію:\n\nОсь анкета користувача:",
-        pendingMenu
-      );
+      await ctx.reply("Вам хтось поставив лайк! Оберіть дію:", pendingMenu);
     } else {
       // Якщо користувач видалив анкету — просто видаляємо з черги
       user.pendingLikes.shift();
@@ -843,7 +840,7 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
             // Потім текст з кнопками pendingMenu
             await ctx.telegram.sendMessage(
               likedUser.id,
-              "Вам хтось поставив лайк! Оберіть дію:\n\nОсь анкета користувача:",
+              "Вам хтось поставив лайк! Оберіть дію:",
               pendingMenu
             );
           }
