@@ -210,13 +210,21 @@ bot.command("find", async (ctx) => {
 
 bot.command("profile", async (ctx) => {
   const id = ctx.from.id;
-  let user = await loadUser(id);
+  const user = await loadUser(id);
+  // Якщо анкету не створено або не завершено
   if (!user || !user.finished) {
-    return ctx.reply("Ти ще не створив анкету! Натисни /start щоб почати.");
+    return ctx.reply(
+      "Ти ще не створив анкету. Натисни /start, щоб розпочати."
+    );
   }
+  // Якщо фото відсутні
   if (!user.data.photos || user.data.photos.length === 0) {
-    return ctx.reply("У твоїй анкеті ще немає фото.");
+    return ctx.reply(
+      "У твоїй анкеті ще немає фото.\n\n" +
+      "Щоб додати фото, натисни «✏️ Редагувати профіль» або виконай /edit."
+    );
   }
+  // Інакше показуємо медіа-групу та меню дій
   const photos = user.data.photos;
   await ctx.replyWithMediaGroup([
     {
@@ -230,7 +238,10 @@ bot.command("profile", async (ctx) => {
       media: file_id,
     })),
   ]);
-  await ctx.reply("Обери дію:", mainMenu);
+  await ctx.reply(
+    "Обери дію:",
+    mainMenu
+  );
 });
 
 bot.command("edit", async (ctx) => {
