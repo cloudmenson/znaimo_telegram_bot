@@ -23,7 +23,7 @@ bot.catch((err, ctx) => {
   ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
 });
 
-// Привітальне повідомлення для нових користувачів
+// Привітальне повідомлення для нових користувачіва
 bot.on("message", async (ctx, next) => {
   // Пропустити команди, щоб не блокувати /start та інші
   if (ctx.message.text && ctx.message.text.startsWith("/")) {
@@ -155,21 +155,22 @@ async function checkPendingLikes(ctx, user) {
 }
 
 bot.start(async (ctx) => {
-  const id = ctx.from.id;
-  let user = await loadUser(id);
-  if (!user || !user.finished) {
-    user = { ...startProfile, id, username: ctx.from.username || null };
-    await saveUser(user);
-    // Показати лише кнопку "Створити анкету" (inline)
-    await ctx.reply(
-      "✍️ Вітаю у Znaimo! Давай створимо твою анкету.",
-      Markup.inlineKeyboard([
-        [Markup.button.callback("Створити анкету", "create_profile")],
-      ])
-    );
-  } else {
-    ctx.reply("Ти вже маєш анкету! Обирай дію нижче:", mainMenu);
-  }
+  // 1) Індикатор “typing…”
+  await ctx.sendChatAction("typing");
+  // 2) Персональне вітання
+  await ctx.reply(
+    `👋 Привіт, ${ctx.from.first_name}! Ласкаво просимо до Znaimo!`
+  );
+
+  // 3) Ще один “typing…” перед наступним кроком
+  await ctx.sendChatAction("typing");
+  // 4) Власне запит на створення анкети
+  await ctx.reply(
+    "✍️ Давай створимо твою анкету.",
+    Markup.inlineKeyboard([
+      [Markup.button.callback("Створити анкету", "create_profile")],
+    ])
+  );
 });
 
 // ------------------ INLINE-КНОПКИ ТА CALLBACK-и ------------------
