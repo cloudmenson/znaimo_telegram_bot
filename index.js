@@ -762,6 +762,15 @@ async function handleSearch(ctx, user, id, isInline = false) {
   }
 }
 
+// Універсальний обробник текстових повідомлень для відлову кнопок пошуку
+bot.on("text", async (ctx, next) => {
+  const txt = ctx.message.text?.trim();
+  if (txt === "💝") return bot.emit("hears", ctx, "💝");
+  if (txt === "❌") return bot.emit("hears", ctx, "❌");
+  if (txt === "⚙️ Профіль") return bot.emit("hears", ctx, "⚙️ Профіль");
+  return next();
+});
+
 // Лайк анкети через клавіатуру
 bot.hears("💝", async (ctx) => {
   const id = ctx.from.id;
