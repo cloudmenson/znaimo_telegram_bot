@@ -79,8 +79,7 @@ const editProfileMenu = Markup.inlineKeyboard([
     Markup.button.callback("📝 Опис", "edit_about"),
   ],
   [
-    Markup.button.callback("🤳 Фото", "edit_photos"),
-    Markup.button.callback("⬅️ Назад", "edit_back"),
+    Markup.button.callback("🤳 Фото", "edit_photos")
   ],
 ]);
 
@@ -492,53 +491,19 @@ bot.action("edit_photos", async (ctx) => {
     const id = ctx.from.id;
     let user = await loadUser(id);
     if (!user) {
-      return ctx.answerCbQuery("Сталася помилка: не знайдено користувача.");
+      return ctx.answerCbQuery("Користувача не знайдено.");
     }
     user.editStep = "edit_photos";
     user.data.photos = [];
     await saveUser(user);
-    await ctx.editMessageText(
-      "📸 Відправ фото одне за одним (максимум 3). Коли закінчиш — напиши 'Готово'."
+    // Запитуємо фото через reply-клавіатуру
+    await ctx.reply(
+      "📸 Надішліть до 3 фото. Коли готові — натисніть «Готово».",
+      Markup.keyboard([["Готово"]]).resize().oneTime(true)
     );
   } catch (e) {
     console.error("EDIT_PHOTOS ERROR:", e);
-    await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
-  }
-});
-bot.action("edit_back", async (ctx) => {
-  try {
-    const id = ctx.from.id;
-    let user = await loadUser(id);
-    if (!user) {
-      return ctx.editMessageText(
-        "Ти ще не створив анкету! /start — щоб почати."
-      );
-    }
-    if (!user.finished) {
-      return ctx.editMessageText(
-        "Ти ще не створив анкету! /start — щоб почати."
-      );
-    }
-    if (!user.data.photos || user.data.photos.length === 0) {
-      return ctx.editMessageText("У твоїй анкеті ще немає фото.");
-    }
-    const photos = user.data.photos;
-    await ctx.replyWithMediaGroup([
-      {
-        type: "photo",
-        media: photos[0],
-        caption: prettyProfile(user),
-        parse_mode: "HTML",
-      },
-      ...photos.slice(1).map((file_id) => ({
-        type: "photo",
-        media: file_id,
-      })),
-    ]);
-    await ctx.reply("Обери дію:", mainMenu);
-  } catch (e) {
-    console.error("EDIT_BACK ERROR:", e);
-    await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
+    await ctx.reply("Виникла помилка. Спробуйте ще раз.");
   }
 });
 
@@ -602,24 +567,29 @@ bot.on("message", async (ctx, next) => {
             break;
           case "edit_photos":
             if (ctx.message.photo) {
-              if (user.data.photos.length >= 3) {
-                return ctx.reply("3 фото додано. Ви не можете додати більше.");
-              }
-              // Only add the last (highest-res) photo from the message
-              const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+              const fileId =
+                ctx.message.photo[ctx.message.photo.length - 1].file_id;
               user.data.photos.push(fileId);
               await saveUser(user);
-              if (user.data.photos.length === 3) {
-                await ctx.reply("3 фото додано. Ви не можете додати більше.");
-              } else {
-                await ctx.reply(
-                  `Фото додано (${user.data.photos.length}/3). Ви можете додати ще фото.`
-                );
-              }
-            } else {
-              await ctx.reply("Надішли фото.");
+              const count = user.data.photos.length;
+              const text =
+                count < 3
+                  ? `Фото додано (${count}/3). Надішліть ще або натисніть «Готово».`
+                  : `Фото додано (${count}/3). Максимум досягнуто. Натисніть «Готово».`;
+              return ctx.reply(text, Markup.keyboard([["Готово"]]).resize().oneTime(true));
             }
-            break;
+            if (
+              ctx.message.text === "Готово" ||
+              ctx.message.text?.toLowerCase() === "готово"
+            ) {
+              user.editStep = null;
+              await saveUser(user);
+              return ctx.reply("✅ Фото профілю оновлено!", mainMenu);
+            }
+            return ctx.reply(
+              "Надішліть фото або натисніть «Готово».",
+              Markup.keyboard([["Готово"]]).resize().oneTime(true)
+            );
         }
         return;
       } catch (e) {
