@@ -512,7 +512,7 @@ bot.action("edit_back", async (ctx) => {
 });
 
 // Обробка повідомлень (тільки для введення тексту/фото/етапи)
-bot.on("message", async (ctx) => {
+bot.on("message", async (ctx, next) => {
   try {
     const id = ctx.from.id;
     let user = await loadUser(id);
@@ -614,7 +614,7 @@ bot.on("message", async (ctx) => {
     }
 
     // Якщо анкета вже заповнена — не реагувати (всі дії через інлайн)
-    if (user.finished) return;
+    if (user.finished) return next();
 
     // --- Заповнення анкети step-by-step ---
     try {
