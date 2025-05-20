@@ -20,9 +20,6 @@ const mainMenu = Markup.keyboard([
   .resize()
   .oneTime(false);
 
-const searchMenu = Markup.keyboard([["💝", "❌", "⚙️ Профіль"]])
-  .resize()
-  .oneTime(false);
 
 const pendingMenu = Markup.keyboard([["💝 Взаємно", "❌ Відхилити"]])
   .resize()
@@ -755,85 +752,20 @@ async function handleSearch(ctx, user, id, isInline = false) {
         media: file_id,
       })),
     ]);
-    await ctx.reply("Зробіть свій вибір:", searchMenu);
+    await ctx.reply(
+      "Зробіть свій вибір:",
+      Markup.inlineKeyboard([
+        Markup.button.callback("💝", "like"),
+        Markup.button.callback("❌", "dislike"),
+        Markup.button.callback("⚙️ Профіль", "profile"),
+      ])
+    );
   } catch (e) {
     console.error("handleSearch ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
   }
 }
 
-// Універсальний обробник текстових повідомлень для відлову кнопок пошуку
-bot.on("text", async (ctx, next) => {
-  const txt = ctx.message.text?.trim();
-  if (txt === "💝") return bot.emit("hears", ctx, "💝");
-  if (txt === "❌") return bot.emit("hears", ctx, "❌");
-  if (txt === "⚙️ Профіль") return bot.emit("hears", ctx, "⚙️ Профіль");
-  return next();
-});
-
-// Лайк анкети через клавіатуру
-bot.hears("💝", async (ctx) => {
-  const id = ctx.from.id;
-  let user = await loadUser(id);
-  // Додаємо автоматичний пошук, якщо currentView втрачено:
-  if (!user || !user.currentView) {
-    await ctx.reply(
-      "Немає анкети для оцінки. Натисніть «Дивитися анкети», щоб знайти нову."
-    );
-    // Відразу пропонуємо новий пошук:
-    return await handleSearch(ctx, user, id, false);
-  }
-  await handleLikeDislike(ctx, user, "like", false);
-});
-
-// Дизлайк анкети через клавіатуру
-bot.hears("❌", async (ctx) => {
-  const id = ctx.from.id;
-  let user = await loadUser(id);
-  if (!user || !user.currentView) {
-    await ctx.reply(
-      "Немає анкети для оцінки. Натисніть «Дивитися анкети», щоб знайти нову."
-    );
-    return await handleSearch(ctx, user, id, false);
-  }
-  await handleLikeDislike(ctx, user, "dislike", false);
-});
-
-// Показати профіль іншого користувача через клавіатуру
-bot.hears("⚙️ Профіль", async (ctx) => {
-  const id = ctx.from.id;
-  let user = await loadUser(id);
-  if (!user || !user.currentView) {
-    await ctx.reply(
-      "Немає анкети для перегляду профілю. Спробуйте ще раз через “Дивитися анкети”."
-    );
-    return await handleSearch(ctx, user, id, false);
-  }
-  const otherUser = await loadUser(user.currentView);
-  if (!otherUser) {
-    await ctx.reply(
-      "Не знайдено анкету. Спробуйте ще раз через “Дивитися анкети”."
-    );
-    return await handleSearch(ctx, user, id, false);
-  }
-  if (!otherUser.data.photos || otherUser.data.photos.length === 0) {
-    await ctx.reply("У цього користувача немає фото.");
-    return await handleSearch(ctx, user, id, false);
-  }
-  const photos = otherUser.data.photos;
-  await ctx.replyWithMediaGroup([
-    {
-      type: "photo",
-      media: photos[0],
-      caption: prettyProfile(otherUser),
-      parse_mode: "HTML",
-    },
-    ...photos.slice(1).map((file_id) => ({
-      type: "photo",
-      media: file_id,
-    })),
-  ]);
-});
 
 async function handleLikeDislike(ctx, user, action, isInline = false) {
   try {
