@@ -53,10 +53,38 @@ bot.on("message", async (ctx, next) => {
 
 // Основні меню як звичайна клавіатура
 const mainMenu = Markup.keyboard([
-  ["🔍 Дивитися анкети", "✏️ Редагувати профіль"],
+  ["🔍 Дивитися анкети", "✏️ Редагувати профіль", "📝 Профіль"],
 ])
   .resize()
   .oneTime(false);
+// Відображення власного профілю через клавіатуру
+bot.hears("📝 Профіль", async (ctx) => {
+  const id = ctx.from.id;
+  const user = await loadUser(id);
+  // Якщо анкета незавершена
+  if (!user || !user.finished) {
+    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
+  }
+  // Якщо фото відсутні
+  if (!user.data.photos || user.data.photos.length === 0) {
+    return ctx.reply(
+      "У твоїй анкеті ще немає фото.\n" +
+      "Щоб додати фото, натисни «✏️ Редагувати профіль»."
+    );
+  }
+  // Показуємо медіа-групу з анкетою
+  await ctx.replyWithMediaGroup([
+    {
+      type: "photo",
+      media: user.data.photos[0],
+      caption: prettyProfile(user),
+      parse_mode: "HTML",
+    },
+    ...user.data.photos.slice(1).map(file_id => ({ type: "photo", media: file_id }))
+  ]);
+  // Повертаємо меню дій
+  await ctx.reply("Обери дію:", mainMenu);
+});
 
 // Меню очікування лайків (reply-keyboard)
 const pendingMenu = Markup.keyboard([["💝 Взаємно", "❌ Відхилити"]])
@@ -64,7 +92,7 @@ const pendingMenu = Markup.keyboard([["💝 Взаємно", "❌ Відхили
   .oneTime(false);
 
 // Меню для пошуку (reply-keyboard)
-const searchMenu = Markup.keyboard([["💝", "❌", "⚙️ Профіль"]])
+const searchMenu = Markup.keyboard([["💝", "❌", "📝 Профіль"]])
   .resize()
   .oneTime(false);
 
@@ -901,7 +929,7 @@ const WEBHOOK_URL = `https://${
 // Встановлюємо список команд бота
 (async () => {
   await bot.telegram.setMyCommands([
-    { command: "profile", description: "📝 Мій профіль" },
+    { command: "profile", description: "📝 Профіль" },
     { command: "referral", description: "🎁 Реферальна система" },
     { command: "privacy", description: "🔒 Політика приватності" },
     { command: "blacklist", description: "🚫 Додати в чорний список" },
@@ -939,7 +967,7 @@ bot.hears("❌", async (ctx) => {
   await handleLikeDislike(ctx, user, "dislike");
 });
 
-bot.hears("⚙️ Профіль", async (ctx) => {
+bot.hears("📝 Профіль", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
   if (!user || !user.finished) {
