@@ -25,6 +25,11 @@ const pendingMenu = Markup.keyboard([["💝 Взаємно", "❌ Відхили
   .resize()
   .oneTime(false);
 
+// Меню для пошуку (reply-keyboard)
+const searchMenu = Markup.keyboard([["💝", "❌", "⚙️ Профіль"]])
+  .resize()
+  .oneTime(false);
+
 // Меню редагування профілю — тільки воно інлайн!
 const editProfileMenu = Markup.inlineKeyboard([
   [
@@ -752,14 +757,8 @@ async function handleSearch(ctx, user, id, isInline = false) {
         media: file_id,
       })),
     ]);
-    await ctx.reply(
-      "Зробіть свій вибір:",
-      Markup.inlineKeyboard([
-        Markup.button.callback("💝", "like"),
-        Markup.button.callback("❌", "dislike"),
-        Markup.button.callback("⚙️ Профіль", "profile"),
-      ])
-    );
+    // Use reply-keyboard for search mode
+    await ctx.reply("Зробіть свій вибір:", searchMenu);
   } catch (e) {
     console.error("handleSearch ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
@@ -839,3 +838,47 @@ app.listen(process.env.PORT, () => {
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
+
+// Кнопки пошуку (reply-keyboard)
+bot.hears("💝", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished || !user.currentView) {
+    return ctx.reply("Немає доступної анкети для оцінки.");
+  }
+  await handleLikeDislike(ctx, user, "like");
+});
+
+bot.hears("❌", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished || !user.currentView) {
+    return ctx.reply("Немає доступної анкети для оцінки.");
+  }
+  await handleLikeDislike(ctx, user, "dislike");
+});
+
+bot.hears("⚙️ Профіль", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.reply("Ти ще не створив анкету! Натисни /start щоб почати.");
+  }
+  if (!user.data.photos || user.data.photos.length === 0) {
+    return ctx.reply("У твоїй анкеті ще немає фото.");
+  }
+  const photos = user.data.photos;
+  await ctx.replyWithMediaGroup([
+    {
+      type: "photo",
+      media: photos[0],
+      caption: prettyProfile(user),
+      parse_mode: "HTML",
+    },
+    ...photos.slice(1).map((file_id) => ({
+      type: "photo",
+      media: file_id,
+    })),
+  ]);
+  await ctx.reply("Обери дію:", mainMenu);
+});
