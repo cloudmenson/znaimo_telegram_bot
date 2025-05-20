@@ -4,6 +4,7 @@ require("dotenv").config();
 
 const { loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
 
+const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // Глобальний обробник помилок Telegraf
@@ -810,12 +811,24 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
 }
 
 // --------------------- Запуск ------------------------
-bot.launch();
-console.log("@@@@@@@@@@@ BOT IS RUNNING! @@@@@@@@@@@");
+console.log("--------- BOT IS RUNNING! ---------");
 
-const app = express();
+const WEBHOOK_PATH = "/bot" + process.env.BOT_TOKEN;
+const WEBHOOK_URL = `https://${
+  process.env.RENDER_EXTERNAL_HOSTNAME || "your-app-name.onrender.com"
+}${WEBHOOK_PATH}`;
+
+(async () => {
+  await bot.telegram.setWebhook(WEBHOOK_URL);
+})();
+
+app.use(bot.webhookCallback(WEBHOOK_PATH));
 app.get("/", (req, res) => res.send("Znaimo bot is alive!"));
-app.listen(process.env.PORT);
+
+// Слухаємо порт Render
+app.listen(process.env.PORT, () => {
+  console.log(`Server listening on port ${process.env.PORT}`);
+});
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
