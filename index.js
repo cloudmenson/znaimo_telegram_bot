@@ -808,9 +808,7 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
           }
           await ctx.telegram.sendMessage(
             id,
-            `💞 У вас взаємний лайк з @${
-              likedUser.username || likedUser.id
-            }!\n\nБажаємо приємного спілкування та чудового настрою!`
+            `💞 У вас взаємний лайк з @${likedUser.username || likedUser.id}!`
           );
           // After mutual like, return and do not proceed to search
           return;
