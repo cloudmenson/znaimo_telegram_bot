@@ -685,11 +685,10 @@ bot.on("message", async (ctx, next) => {
           user.data.about = ctx.message.text.trim();
           user.step = "photos";
           await saveUser(user);
-          // Show inline buttons for photo upload
+          // Show inline button for photo upload (only "Готово")
           await ctx.reply(
             `📸 Додай фото (до 3).`,
             Markup.inlineKeyboard([
-              Markup.button.callback("📷 Завантажити фото", "add_photo"),
               Markup.button.callback("✅ Готово", "done_photos")
             ])
           );
@@ -703,7 +702,6 @@ bot.on("message", async (ctx, next) => {
             return await ctx.reply(
               `📸 Додай фото (до 3).`,
               Markup.inlineKeyboard([
-                Markup.button.callback("📷 Завантажити фото", "add_photo"),
                 Markup.button.callback("✅ Готово", "done_photos")
               ])
             );
@@ -712,16 +710,6 @@ bot.on("message", async (ctx, next) => {
         default:
           await ctx.reply("Щось пішло не так. /start щоб почати спочатку.");
       }
-// Додати ще фото
-bot.action("add_photo", async (ctx) => {
-  const id = ctx.from.id;
-  const user = await loadUser(id);
-  user.editStep = "photos";
-  await saveUser(user);
-  await ctx.answerCbQuery(); // remove loading
-  await ctx.reply("📸 Надішли фото (1–3).");
-});
-
 // Завершити додавання фото
 bot.action("done_photos", async (ctx) => {
   const id = ctx.from.id;
