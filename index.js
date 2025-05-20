@@ -752,29 +752,46 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
     if (likedUser) {
       if (action === "like") {
         if ((likedUser.seen || []).includes(id)) {
-          // Mutual like: notify both users
-          // Notify likedUser (otherId)
+          // Mutual like: send media group (profile) and notification to both
+          // Для likedUser (otherId)
+          if (user.data.photos && user.data.photos.length > 0) {
+            await ctx.telegram.sendMediaGroup(otherId, [
+              {
+                type: "photo",
+                media: user.data.photos[0],
+                caption: prettyProfile(user),
+                parse_mode: "HTML",
+              },
+              ...user.data.photos.slice(1).map((file_id) => ({
+                type: "photo",
+                media: file_id,
+              })),
+            ]);
+          }
           await ctx.telegram.sendMessage(
             otherId,
-            `💞 Ви щойно отримали взаємний лайк!\n\n` +
-              `Бажаємо приємно провести час!\n` +
-              `Ось посилання на вашого матчера: ` +
-              (user.username
-                ? `https://t.me/${user.username}`
-                : `tg://user?id=${user.id}`)
+            `💞 У вас взаємний лайк з @${ctx.from.username || user.id}!`
           );
 
-          // Notify the liker (current user)
+          // Для користувача, який лайкнув (current user)
+          if (likedUser.data.photos && likedUser.data.photos.length > 0) {
+            await ctx.telegram.sendMediaGroup(id, [
+              {
+                type: "photo",
+                media: likedUser.data.photos[0],
+                caption: prettyProfile(likedUser),
+                parse_mode: "HTML",
+              },
+              ...likedUser.data.photos.slice(1).map((file_id) => ({
+                type: "photo",
+                media: file_id,
+              })),
+            ]);
+          }
           await ctx.telegram.sendMessage(
             id,
-            `💞 Ви щойно отримали взаємний лайк!\n\n` +
-              `Бажаємо приємно провести час!\n` +
-              `Ось посилання на вашого матчера: ` +
-              (likedUser.username
-                ? `https://t.me/${likedUser.username}`
-                : `tg://user?id=${likedUser.id}`)
+            `💞 У вас взаємний лайк з @${likedUser.username || likedUser.id}!\n\nБажаємо приємного спілкування та чудового настрою!`
           );
-
           // After mutual like, return and do not proceed to search
           return;
         } else {
