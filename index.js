@@ -18,15 +18,19 @@ bot.on("message", async (ctx, next) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
   if (!user) {
+    // Індикатор “бот друкує”
+    await ctx.sendChatAction("typing");
+
+    // Особисте звертання по імені
     await ctx.reply(
-      `👋 Вітаю у Znaimo!
+      `👋 Привіт, ${ctx.from.first_name}! Ласкаво просимо до Znaimo!
 
-Я твій персональний помічник у світі онлайн-знайомств. Тут ти зможеш:
-• Створити свою анкету;
-• Познайомитися з цікавими людьми поблизу;
-• Почати спілкування в пару кліків.
+Щоб почати, натисни /start.
 
-⏳ Очікуйте нових фіч!`
+Я допоможу тобі:
+• Створити власну анкету
+• Знайти та переглянути анкети інших
+• Розпочати спілкування одразу після зустрічі лайків!`
     );
     return;
   }
@@ -137,6 +141,9 @@ async function checkPendingLikes(ctx, user) {
 }
 
 bot.start(async (ctx) => {
+  // Показуємо, що бот щось робить
+  await ctx.sendChatAction("typing");
+
   const id = ctx.from.id;
   let user = await loadUser(id);
   if (!user || !user.finished) {
@@ -144,7 +151,7 @@ bot.start(async (ctx) => {
     await saveUser(user);
     // Показати лише кнопку "Створити анкету" (inline)
     await ctx.reply(
-      "Вітаю у Znaimo! Давай створимо твою анкету.",
+      "✍️ Вітаю у Znaimo! Давай створимо твою анкету.",
       Markup.inlineKeyboard([
         [Markup.button.callback("Створити анкету", "create_profile")],
       ])
@@ -411,7 +418,7 @@ bot.action("edit_name", async (ctx) => {
     }
     user.editStep = "edit_name";
     await saveUser(user);
-    await ctx.editMessageText("Введи нове імʼя:");
+    await ctx.editMessageText("✏️ Введи нове імʼя:");
   } catch (e) {
     console.error("EDIT_NAME ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
@@ -426,7 +433,7 @@ bot.action("edit_age", async (ctx) => {
     }
     user.editStep = "edit_age";
     await saveUser(user);
-    await ctx.editMessageText("Введи новий вік:");
+    await ctx.editMessageText("🎂 Введи новий вік:");
   } catch (e) {
     console.error("EDIT_AGE ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
@@ -441,7 +448,7 @@ bot.action("edit_city", async (ctx) => {
     }
     user.editStep = "edit_city";
     await saveUser(user);
-    await ctx.editMessageText("Введи нову назву міста:");
+    await ctx.editMessageText("🏠 Введи нову назву міста:");
   } catch (e) {
     console.error("EDIT_CITY ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
@@ -456,7 +463,7 @@ bot.action("edit_about", async (ctx) => {
     }
     user.editStep = "edit_about";
     await saveUser(user);
-    await ctx.editMessageText("Введи новий опис (5-200 символів):");
+    await ctx.editMessageText("📝 Введи новий опис (5-200 символів):");
   } catch (e) {
     console.error("EDIT_ABOUT ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
@@ -473,7 +480,7 @@ bot.action("edit_photos", async (ctx) => {
     user.data.photos = [];
     await saveUser(user);
     await ctx.editMessageText(
-      "Відправ фото одне за одним (максимум 3). Коли закінчиш — напиши 'Готово'."
+      "📸 Відправ фото одне за одним (максимум 3). Коли закінчиш — напиши 'Готово'."
     );
   } catch (e) {
     console.error("EDIT_PHOTOS ERROR:", e);
@@ -632,7 +639,7 @@ bot.on("message", async (ctx, next) => {
           user.data.name = ctx.message.text.trim();
           user.step = "age";
           await saveUser(user);
-          await ctx.reply("Скільки тобі років?");
+          await ctx.reply("🎂 Скільки тобі років?");
           break;
         case "age":
           {
@@ -643,7 +650,7 @@ bot.on("message", async (ctx, next) => {
             user.data.age = age;
             user.step = "city";
             await saveUser(user);
-            await ctx.reply("В якому місті ти живеш?");
+            await ctx.reply("🏠 В якому місті ти живеш?");
           }
           break;
         case "city":
@@ -653,7 +660,7 @@ bot.on("message", async (ctx, next) => {
           user.data.city = ctx.message.text.trim();
           user.step = "about";
           await saveUser(user);
-          await ctx.reply("Розкажи про себе коротко (до 200 символів):");
+          await ctx.reply("📝 Розкажи про себе коротко (до 200 символів):");
           break;
         case "about":
           if (
@@ -662,14 +669,14 @@ bot.on("message", async (ctx, next) => {
             ctx.message.text.length > 200
           ) {
             return ctx.reply(
-              "Введи коротку інформацію про себе (5-200 символів):"
+              "📝 Введи коротку інформацію про себе (5-200 символів):"
             );
           }
           user.data.about = ctx.message.text.trim();
           user.step = "photos";
           await saveUser(user);
           await ctx.reply(
-            "Додай хоча б одне фото (максимум 3).\nВідправ фото одне за одним, коли готово — напиши 'Готово'."
+            "📸 Додай хоча б одне фото (максимум 3).\nВідправ фото одне за одним, коли готово — напиши 'Готово'."
           );
           break;
         case "photos":
@@ -768,7 +775,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
       })),
     ]);
     // Use reply-keyboard for search mode
-    await ctx.reply("Зробіть свій вибір:", searchMenu);
+    await ctx.reply("📋 Зробіть свій вибір:", searchMenu);
   } catch (e) {
     console.error("handleSearch ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
