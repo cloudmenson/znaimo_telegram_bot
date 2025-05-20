@@ -343,11 +343,11 @@ bot.hears("💝 Взаємно", async (ctx) => {
 
   // Відправляємо контакт pendingUser поточному користувачу
   if (pendingUser && pendingUser.username) {
-    await ctx.reply(`https://t.me/${pendingUser.username}`);
-    await ctx.reply(
-      `💞 У вас взаємний лайк з @${pendingUser.username}!\n\nБажаємо приємного спілкування та чудового настрою!`,
-      mainMenu
-    );
+    await ctx.reply(`
+      💞 У вас взаємний лайк з @${pendingUser.username}!\n\n +
+      Бажаємо приємного спілкування та чудового настрою!\n\n +
+      https://t.me/${pendingUser.username}
+      `);
   }
 
   // Відправляємо контакт користувача (ctx.from) pendingUser
@@ -355,11 +355,9 @@ bot.hears("💝 Взаємно", async (ctx) => {
     const usernameOrId = user.username ? user.username : user.id;
     await ctx.telegram.sendMessage(
       pendingId,
-      `https://t.me/${usernameOrId}`
-    );
-    await ctx.telegram.sendMessage(
-      pendingId,
-      `💞 У вас взаємний лайк з @${usernameOrId}!\n\nБажаємо приємного спілкування та чудового настрою!`
+      `💞 У вас взаємний лайк з @${pendingUser.username}!\n\n` +
+        `Бажаємо приємного спілкування та чудового настрою!\n\n` +
+        `https://t.me/${usernameOrId}`
     );
   }
 });
@@ -806,7 +804,9 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
           }
           await ctx.telegram.sendMessage(
             id,
-            `💞 У вас взаємний лайк з @${likedUser.username || likedUser.id}!\n\nБажаємо приємного спілкування та чудового настрою!`
+            `💞 У вас взаємний лайк з @${
+              likedUser.username || likedUser.id
+            }!\n\nБажаємо приємного спілкування та чудового настрою!`
           );
           // After mutual like, return and do not proceed to search
           return;
