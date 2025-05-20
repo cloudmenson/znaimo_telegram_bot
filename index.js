@@ -20,7 +20,6 @@ const mainMenu = Markup.keyboard([
   .resize()
   .oneTime(false);
 
-
 const pendingMenu = Markup.keyboard([["💝 Взаємно", "❌ Відхилити"]])
   .resize()
   .oneTime(false);
@@ -206,6 +205,11 @@ bot.action("search", async (ctx) => {
   try {
     const id = ctx.from.id;
     let user = await loadUser(id);
+
+    // Перевірка вхідних лайків перед пошуком
+    const hasPending = await checkPendingLikes(ctx, user);
+    if (hasPending) return;
+
     if (!user) {
       return ctx.answerCbQuery("Сталася помилка: не знайдено користувача.");
     }
@@ -222,6 +226,10 @@ bot.action("search", async (ctx) => {
 bot.hears("🔍 Дивитися анкети", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
+
+  const hasPending = await checkPendingLikes(ctx, user);
+  if (hasPending) return;
+
   if (!user || !user.finished) {
     return ctx.reply("Спочатку створи анкету через /start");
   }
@@ -719,6 +727,10 @@ async function handleSearch(ctx, user, id, isInline = false) {
       if (isInline) return ctx.answerCbQuery("Спочатку створи свою анкету!");
       return ctx.reply("Спочатку створи свою анкету!");
     }
+
+    const hasPending = await checkPendingLikes(ctx, user);
+    if (hasPending) return;
+
     const seen = user.seen || [];
     const allUsers = await getAllUsers();
     const others = allUsers.filter(
@@ -764,7 +776,6 @@ async function handleSearch(ctx, user, id, isInline = false) {
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
   }
 }
-
 
 async function handleLikeDislike(ctx, user, action, isInline = false) {
   try {
