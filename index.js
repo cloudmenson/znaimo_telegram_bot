@@ -217,7 +217,7 @@ bot.action("create_profile", async (ctx) => {
     const user = { ...startProfile, id, username: ctx.from.username || null };
     await saveUser(user);
     // Запитуємо ім'я – тепер user.finished буде false
-    await ctx.editMessageText("✏️ Почнемо з імені. Як тебе звати?");
+    await ctx.reply("✏️ Почнемо з імені. Як тебе звати?");
   } catch (e) {
     console.error("CREATE_PROFILE ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
