@@ -20,6 +20,7 @@ const mainMenu = Markup.keyboard([
   .resize()
   .oneTime(false);
 
+// Меню очікування лайків (reply-keyboard)
 const pendingMenu = Markup.keyboard([["💝 Взаємно", "❌ Відхилити"]])
   .resize()
   .oneTime(false);
@@ -329,74 +330,35 @@ bot.action("profile", async (ctx) => {
   }
 });
 
-// Меню очікування лайків
-bot.action("pending_like", async (ctx) => {
-  try {
-    const id = ctx.from.id;
-    let user = await loadUser(id);
-    if (!user) {
-      return ctx.answerCbQuery("Сталася помилка: не знайдено користувача.");
-    }
-    if (!user.pendingLikes || user.pendingLikes.length === 0) {
-      return ctx.reply("У вас немає запитів на лайк.");
-    }
-    const pendingId = user.pendingLikes.shift();
-    await saveUser(user);
-    const pendingUser = await loadUser(pendingId);
-    if (pendingUser) {
-      // Надсилаємо посилання обом!
-      if (user.username) {
-        await ctx.telegram.sendMessage(
-          pendingId,
-          `💞 Ви щойно отримали взаємний лайк!\n\n` +
-            `Бажаємо приємно провести час!\n` +
-            `Ось посилання на користувача: https://t.me/${user.username}`
-        );
-      }
-      if (pendingUser.username) {
-        await ctx.telegram.sendMessage(
-          user.id,
-          `💞 Ви щойно отримали взаємний лайк!\n\n` +
-            `Бажаємо приємно провести час!\n` +
-            `Користувач: https://t.me/${pendingUser.username}`
-        );
-      }
-    }
-    // Після відповіді — якщо ще є pending, одразу наступний!
-    if (user.pendingLikes.length > 0) {
-      await saveUser(user);
-      await checkPendingLikes(ctx, user);
-    } else {
-      await saveUser(user);
-      await ctx.editMessageText("Дякуємо за відповідь!", mainMenu);
-    }
-    await ctx.answerCbQuery();
-  } catch (e) {
-    console.error("PENDING_LIKE ERROR:", e);
-    await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
+// Обробка відповіді на pending likes через клавіатуру
+bot.hears("💝 Взаємно", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user.pendingLikes || user.pendingLikes.length === 0) {
+    return ctx.reply("У вас немає запитів на лайк.", mainMenu);
+  }
+  const pendingId = user.pendingLikes.shift();
+  await saveUser(user);
+  const pendingUser = await loadUser(pendingId);
+  // Надіслати обом повідомлення про взаємний лайк
+  await ctx.reply("💞 Взаємний лайк! Ось контакт:", mainMenu);
+  if (pendingUser && pendingUser.username) {
+    await ctx.telegram.sendMessage(id, `https://t.me/${pendingUser.username}`);
+    await ctx.telegram.sendMessage(pendingId, `https://t.me/${user.username}`);
   }
 });
-bot.action("pending_dislike", async (ctx) => {
-  try {
-    const id = ctx.from.id;
-    let user = await loadUser(id);
-    if (!user) {
-      return ctx.answerCbQuery("Сталася помилка: не знайдено користувача.");
-    }
-    if (!user.pendingLikes || user.pendingLikes.length === 0) {
-      return ctx.reply("У вас немає запитів на лайк.");
-    }
-    user.pendingLikes.shift();
-    await saveUser(user);
-    if (user.pendingLikes.length > 0) {
-      await checkPendingLikes(ctx, user);
-    } else {
-      await ctx.editMessageText("Дякуємо за відповідь!", mainMenu);
-    }
-    await ctx.answerCbQuery();
-  } catch (e) {
-    console.error("PENDING_DISLIKE ERROR:", e);
-    await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
+bot.hears("❌ Відхилити", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user.pendingLikes || user.pendingLikes.length === 0) {
+    return ctx.reply("У вас немає запитів на лайк.", mainMenu);
+  }
+  user.pendingLikes.shift();
+  await saveUser(user);
+  if (user.pendingLikes.length > 0) {
+    await checkPendingLikes(ctx, user);
+  } else {
+    await ctx.reply("Відхилено.", mainMenu);
   }
 });
 
