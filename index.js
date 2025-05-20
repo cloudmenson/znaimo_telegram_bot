@@ -813,9 +813,32 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
           } catch (e) {}
         } else {
           if (!likedUser.pendingLikes) likedUser.pendingLikes = [];
-          if (!likedUser.pendingLikes.includes(id)) {
-            likedUser.pendingLikes.push(id);
+          if (!likedUser.pendingLikes.includes(user.id)) {
+            likedUser.pendingLikes.push(user.id);
             await saveUser(likedUser);
+
+            // Негайне повідомлення користувачу, якому поставили лайк
+            // Спочатку його профіль
+            if (user.data.photos && user.data.photos.length > 0) {
+              await ctx.telegram.sendMediaGroup(likedUser.id, [
+                {
+                  type: "photo",
+                  media: user.data.photos[0],
+                  caption: prettyProfile(user),
+                  parse_mode: "HTML",
+                },
+                ...user.data.photos.slice(1).map((file_id) => ({
+                  type: "photo",
+                  media: file_id,
+                })),
+              ]);
+            }
+            // Потім текст з кнопками pendingMenu
+            await ctx.telegram.sendMessage(
+              likedUser.id,
+              "Вам хтось поставив лайк! Оберіть дію:\n\nОсь анкета користувача:",
+              pendingMenu
+            );
           }
         }
       }
