@@ -340,11 +340,27 @@ bot.hears("💝 Взаємно", async (ctx) => {
   const pendingId = user.pendingLikes.shift();
   await saveUser(user);
   const pendingUser = await loadUser(pendingId);
-  // Надіслати обом повідомлення про взаємний лайк
-  await ctx.reply("💞 Взаємний лайк! Ось контакт:", mainMenu);
+
+  // Відправляємо контакт pendingUser поточному користувачу
   if (pendingUser && pendingUser.username) {
-    await ctx.telegram.sendMessage(id, `https://t.me/${pendingUser.username}`);
-    await ctx.telegram.sendMessage(pendingId, `https://t.me/${user.username}`);
+    await ctx.reply(`https://t.me/${pendingUser.username}`);
+    await ctx.reply(
+      `💞 У вас взаємний лайк з @${pendingUser.username}!\n\nБажаємо приємного спілкування та чудового настрою!`,
+      mainMenu
+    );
+  }
+
+  // Відправляємо контакт користувача (ctx.from) pendingUser
+  if (pendingUser) {
+    const usernameOrId = user.username ? user.username : user.id;
+    await ctx.telegram.sendMessage(
+      pendingId,
+      `https://t.me/${usernameOrId}`
+    );
+    await ctx.telegram.sendMessage(
+      pendingId,
+      `💞 У вас взаємний лайк з @${usernameOrId}!\n\nБажаємо приємного спілкування та чудового настрою!`
+    );
   }
 });
 bot.hears("❌ Відхилити", async (ctx) => {
