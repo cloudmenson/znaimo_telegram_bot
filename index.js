@@ -605,8 +605,8 @@ bot.on("message", async (ctx, next) => {
               if (user.data.photos.length >= 3) {
                 return ctx.reply("3 фото додано. Ви не можете додати більше.");
               }
-              const fileId =
-                ctx.message.photo[ctx.message.photo.length - 1].file_id;
+              // Only add the last (highest-res) photo from the message
+              const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
               user.data.photos.push(fileId);
               await saveUser(user);
               if (user.data.photos.length === 3) {
@@ -682,11 +682,12 @@ bot.on("message", async (ctx, next) => {
           );
         case "photos":
           if (ctx.message.photo) {
-            // Add each incoming photo, up to 3 total
-            const fileIds = ctx.message.photo.map(p => p.file_id);
-            // Only take as many as needed
-            const slots = 3 - user.data.photos.length;
-            user.data.photos.push(...fileIds.slice(0, slots));
+            if (user.data.photos.length >= 3) {
+              return ctx.reply("3 фото додано. Максимум досягнуто. Натисніть «Готово».", Markup.keyboard([["Готово"]]).resize().oneTime(true));
+            }
+            // Only add the last (highest-res) photo from the message
+            const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+            user.data.photos.push(fileId);
             await saveUser(user);
             const count = user.data.photos.length;
             const text =
