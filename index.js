@@ -78,9 +78,7 @@ const editProfileMenu = Markup.inlineKeyboard([
     Markup.button.callback("🏠 Місто", "edit_city"),
     Markup.button.callback("📝 Опис", "edit_about"),
   ],
-  [
-    Markup.button.callback("🤳 Фото", "edit_photos")
-  ],
+  [Markup.button.callback("🤳 Фото", "edit_photos")],
 ]);
 
 const startProfile = {
@@ -213,15 +211,13 @@ bot.command("profile", async (ctx) => {
   const user = await loadUser(id);
   // Якщо анкету не створено або не завершено
   if (!user || !user.finished) {
-    return ctx.reply(
-      "Ти ще не створив анкету. Натисни /start, щоб розпочати."
-    );
+    return ctx.reply("Ти ще не створив анкету. Натисни /start, щоб розпочати.");
   }
   // Якщо фото відсутні
   if (!user.data.photos || user.data.photos.length === 0) {
     return ctx.reply(
       "У твоїй анкеті ще немає фото.\n\n" +
-      "Щоб додати фото, натисни «✏️ Редагувати профіль» або виконай /edit."
+        "Щоб додати фото, натисни «✏️ Редагувати профіль» або виконай /edit."
     );
   }
   // Інакше показуємо медіа-групу та меню дій
@@ -238,10 +234,7 @@ bot.command("profile", async (ctx) => {
       media: file_id,
     })),
   ]);
-  await ctx.reply(
-    "Обери дію:",
-    mainMenu
-  );
+  await ctx.reply("Обери дію:", mainMenu);
 });
 
 bot.command("edit", async (ctx) => {
@@ -510,7 +503,9 @@ bot.action("edit_photos", async (ctx) => {
     // Запитуємо фото через reply-клавіатуру
     await ctx.reply(
       "📸 Надішліть до 3 фото. Коли готові — натисніть «Готово».",
-      Markup.keyboard([["Готово"]]).resize().oneTime(true)
+      Markup.keyboard([["Готово"]])
+        .resize()
+        .oneTime(true)
     );
   } catch (e) {
     console.error("EDIT_PHOTOS ERROR:", e);
@@ -587,7 +582,12 @@ bot.on("message", async (ctx, next) => {
                 count < 3
                   ? `Фото додано (${count}/3). Надішліть ще або натисніть «Готово».`
                   : `Фото додано (${count}/3). Максимум досягнуто. Натисніть «Готово».`;
-              return ctx.reply(text, Markup.keyboard([["Готово"]]).resize().oneTime(true));
+              return ctx.reply(
+                text,
+                Markup.keyboard([["Готово"]])
+                  .resize()
+                  .oneTime(true)
+              );
             }
             if (
               ctx.message.text === "Готово" ||
@@ -599,7 +599,9 @@ bot.on("message", async (ctx, next) => {
             }
             return ctx.reply(
               "Надішліть фото або натисніть «Готово».",
-              Markup.keyboard([["Готово"]]).resize().oneTime(true)
+              Markup.keyboard([["Готово"]])
+                .resize()
+                .oneTime(true)
             );
         }
         return;
@@ -652,22 +654,32 @@ bot.on("message", async (ctx, next) => {
             ctx.message.text.length < 5 ||
             ctx.message.text.length > 200
           ) {
-            return ctx.reply("📝 Введи коротку інформацію про себе (5–200 символів):");
+            return ctx.reply(
+              "📝 Введи коротку інформацію про себе (5–200 символів):"
+            );
           }
           user.data.about = ctx.message.text.trim();
           user.step = "photos";
           await saveUser(user);
           return ctx.reply(
             "📸 Надішліть до 3 фото. Коли готові — натисніть «Готово».",
-            Markup.keyboard([["Готово"]]).resize().oneTime(true)
+            Markup.keyboard([["Готово"]])
+              .resize()
+              .oneTime(true)
           );
         case "photos":
           if (ctx.message.photo) {
             if (user.data.photos.length >= 3) {
-              return ctx.reply("3 фото додано. Максимум досягнуто. Натисніть «Готово».", Markup.keyboard([["Готово"]]).resize().oneTime(true));
+              return ctx.reply(
+                "3 фото додано. Максимум досягнуто. Натисніть «Готово».",
+                Markup.keyboard([["Готово"]])
+                  .resize()
+                  .oneTime(true)
+              );
             }
             // Only add the last (highest-res) photo from the message
-            const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+            const fileId =
+              ctx.message.photo[ctx.message.photo.length - 1].file_id;
             user.data.photos.push(fileId);
             await saveUser(user);
             const count = user.data.photos.length;
@@ -675,7 +687,12 @@ bot.on("message", async (ctx, next) => {
               count < 3
                 ? `Фото додано (${count}/3). Надішліть ще або натисніть «Готово».`
                 : `Фото додано (${count}/3). Максимум досягнуто. Натисніть «Готово».`;
-            return ctx.reply(text, Markup.keyboard([["Готово"]]).resize().oneTime(true));
+            return ctx.reply(
+              text,
+              Markup.keyboard([["Готово"]])
+                .resize()
+                .oneTime(true)
+            );
           }
           if (
             ctx.message.text === "Готово" ||
@@ -684,7 +701,9 @@ bot.on("message", async (ctx, next) => {
             if (user.data.photos.length === 0) {
               return ctx.reply(
                 "Будь ласка, надішліть хоча б одне фото.",
-                Markup.keyboard([["Готово"]]).resize().oneTime(true)
+                Markup.keyboard([["Готово"]])
+                  .resize()
+                  .oneTime(true)
               );
             }
             user.finished = true;
@@ -694,7 +713,9 @@ bot.on("message", async (ctx, next) => {
           }
           return ctx.reply(
             "Надішліть фото або натисніть «Готово».",
-            Markup.keyboard([["Готово"]]).resize().oneTime(true)
+            Markup.keyboard([["Готово"]])
+              .resize()
+              .oneTime(true)
           );
           break;
         default:
@@ -874,10 +895,10 @@ const WEBHOOK_URL = `https://${
 // Встановлюємо список команд бота
 (async () => {
   await bot.telegram.setMyCommands([
-    { command: 'profile', description: '📝 Мій профіль' },
-    { command: 'referral', description: '🎁 Реферальна система' },
-    { command: 'privacy', description: '🔒 Політика приватності' },
-    { command: 'blacklist', description: '🚫 Додати в чорний список' }
+    { command: "profile", description: "📝 Мій профіль" },
+    { command: "referral", description: "🎁 Реферальна система" },
+    { command: "privacy", description: "🔒 Політика приватності" },
+    { command: "blacklist", description: "🚫 Додати в чорний список" },
   ]);
   await bot.telegram.setWebhook(WEBHOOK_URL);
 })();
@@ -935,4 +956,36 @@ bot.hears("⚙️ Профіль", async (ctx) => {
     })),
   ]);
   await ctx.reply("Обери дію:", mainMenu);
+});
+
+// Реферальна система
+bot.command("referral", async (ctx) => {
+  const id = ctx.from.id;
+  const user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.reply("Спочатку створи анкету через /start.");
+  }
+  // TODO: імплементувати логіку рефералів
+  await ctx.reply("🎁 Реферальна система поки в розробці.");
+});
+
+// Політика приватності
+bot.command("privacy", async (ctx) => {
+  const id = ctx.from.id;
+  const user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.reply("Спочатку створи анкету через /start.");
+  }
+  await ctx.reply("🔒 Політика приватності: текст політики тут...");
+});
+
+// Додати в чорний список
+bot.command("blacklist", async (ctx) => {
+  const id = ctx.from.id;
+  const user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.reply("Спочатку створи анкету через /start.");
+  }
+  // TODO: імплементувати додавання в чорний список
+  await ctx.reply("🚫 Додати в чорний список — у розробці.");
 });
