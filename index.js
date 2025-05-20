@@ -593,6 +593,12 @@ bot.on("message", async (ctx, next) => {
               ctx.message.text === "Готово" ||
               ctx.message.text?.toLowerCase() === "готово"
             ) {
+              if (!user.data.photos || user.data.photos.length === 0) {
+                return ctx.reply(
+                  "Будь ласка, надішліть хоча б одне фото.",
+                  Markup.keyboard([["Готово"]]).resize().oneTime(true)
+                );
+              }
               user.editStep = null;
               await saveUser(user);
               return ctx.reply("✅ Фото профілю оновлено!", mainMenu);
