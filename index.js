@@ -188,14 +188,11 @@ bot.start(async (ctx) => {
 bot.action("create_profile", async (ctx) => {
   try {
     const id = ctx.from.id;
-    let user = await loadUser(id);
-    if (!user) {
-      user = { ...startProfile, id, username: ctx.from.username || null };
-      await saveUser(user);
-    }
-    user.step = "name";
+    // Повністю оновлюємо стан анкети
+    const user = { ...startProfile, id, username: ctx.from.username || null };
     await saveUser(user);
-    await ctx.editMessageText("Почнемо з імені. Як тебе звати?");
+    // Запитуємо ім'я – тепер user.finished буде false
+    await ctx.editMessageText("✏️ Почнемо з імені. Як тебе звати?");
   } catch (e) {
     console.error("CREATE_PROFILE ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
@@ -603,21 +600,17 @@ bot.on("message", async (ctx, next) => {
             await saveUser(user);
             await ctx.reply("Опис змінено ✅", mainMenu);
             break;
-        case "edit_photos":
+          case "edit_photos":
             if (ctx.message.photo) {
               if (user.data.photos.length >= 3) {
-                return ctx.reply(
-                  "3 фото додано. Ви не можете додати більше."
-                );
+                return ctx.reply("3 фото додано. Ви не можете додати більше.");
               }
               const fileId =
                 ctx.message.photo[ctx.message.photo.length - 1].file_id;
               user.data.photos.push(fileId);
               await saveUser(user);
               if (user.data.photos.length === 3) {
-                await ctx.reply(
-                  "3 фото додано. Ви не можете додати більше."
-                );
+                await ctx.reply("3 фото додано. Ви не можете додати більше.");
               } else {
                 await ctx.reply(
                   `Фото додано (${user.data.photos.length}/3). Ви можете додати ще фото.`
@@ -689,7 +682,7 @@ bot.on("message", async (ctx, next) => {
           await ctx.reply(
             `📸 Додай фото (до 3).`,
             Markup.inlineKeyboard([
-              Markup.button.callback("✅ Готово", "done_photos")
+              Markup.button.callback("✅ Готово", "done_photos"),
             ])
           );
           break;
@@ -702,7 +695,7 @@ bot.on("message", async (ctx, next) => {
             return await ctx.reply(
               `📸 Додай фото (до 3).`,
               Markup.inlineKeyboard([
-                Markup.button.callback("✅ Готово", "done_photos")
+                Markup.button.callback("✅ Готово", "done_photos"),
               ])
             );
           }
@@ -710,19 +703,19 @@ bot.on("message", async (ctx, next) => {
         default:
           await ctx.reply("Щось пішло не так. /start щоб почати спочатку.");
       }
-// Завершити додавання фото
-bot.action("done_photos", async (ctx) => {
-  const id = ctx.from.id;
-  const user = await loadUser(id);
-  await ctx.answerCbQuery(); // remove loading
-  if (user.data.photos.length === 0) {
-    return await ctx.reply("Додай хоча б одне фото!");
-  }
-  user.finished = true;
-  user.step = null;
-  await saveUser(user);
-  await ctx.reply("✅ Фото додано та анкета завершена!", mainMenu);
-});
+      // Завершити додавання фото
+      bot.action("done_photos", async (ctx) => {
+        const id = ctx.from.id;
+        const user = await loadUser(id);
+        await ctx.answerCbQuery(); // remove loading
+        if (user.data.photos.length === 0) {
+          return await ctx.reply("Додай хоча б одне фото!");
+        }
+        user.finished = true;
+        user.step = null;
+        await saveUser(user);
+        await ctx.reply("✅ Фото додано та анкета завершена!", mainMenu);
+      });
     } catch (e) {
       console.error("STEP MESSAGE ERROR:", e);
       await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
