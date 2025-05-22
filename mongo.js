@@ -16,7 +16,7 @@ async function loadUser(id) {
 
 async function saveUser(user) {
   const db = await getDb();
-  if (!user) return; // нічого не зберігати
+  if (!user) return;
   await db
     .collection("users")
     .updateOne({ id: user.id }, { $set: user }, { upsert: true });
