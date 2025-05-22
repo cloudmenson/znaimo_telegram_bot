@@ -957,8 +957,8 @@ app.listen(process.env.PORT, () => {
   console.log(`Server listening on port ${process.env.PORT}`);
 });
 
-process.once("SIGINT", () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
+process.once("SIGINT", () => process.exit(0));
+process.once("SIGTERM", () => process.exit(0));
 
 // Кнопки пошуку (reply-keyboard)
 bot.hears("💝", async (ctx) => {
