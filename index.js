@@ -469,7 +469,7 @@ bot.action("edit_name", async (ctx) => {
     }
     user.editStep = "edit_name";
     await saveUser(user);
-    await ctx.editMessageText(
+    await ctx.reply(
       "✏️ Введи нове імʼя:",
       Markup.keyboard([["Відмінити"]]).resize().oneTime(true)
     );
@@ -487,7 +487,7 @@ bot.action("edit_age", async (ctx) => {
     }
     user.editStep = "edit_age";
     await saveUser(user);
-    await ctx.editMessageText(
+    await ctx.reply(
       "🎂 Введи новий вік:",
       Markup.keyboard([["Відмінити"]]).resize().oneTime(true)
     );
@@ -505,7 +505,7 @@ bot.action("edit_city", async (ctx) => {
     }
     user.editStep = "edit_city";
     await saveUser(user);
-    await ctx.editMessageText(
+    await ctx.reply(
       "🏠 Введи нову назву міста:",
       Markup.keyboard([["Відмінити"]]).resize().oneTime(true)
     );
@@ -523,7 +523,7 @@ bot.action("edit_about", async (ctx) => {
     }
     user.editStep = "edit_about";
     await saveUser(user);
-    await ctx.editMessageText(
+    await ctx.reply(
       "📝 Введи новий опис (5-200 символів):",
       Markup.keyboard([["Відмінити"]]).resize().oneTime(true)
     );
