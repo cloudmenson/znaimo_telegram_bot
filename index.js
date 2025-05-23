@@ -750,10 +750,10 @@ bot.on("message", async (ctx, next) => {
           break;
         case "gender":
           // Prompt for gender selection if not chosen yet
-          if (!ctx.message.text || !["Чоловік","Жінка","Інше"].includes(ctx.message.text)) {
+          if (!ctx.message.text || !["Хлопець","Дівчина","Інше"].includes(ctx.message.text)) {
             return ctx.reply(
               "⚧ Обери стать:",
-              Markup.keyboard([["Чоловік","Жінка","Інше"]])
+              Markup.keyboard([["Хлопець","Дівчина","Інше"]])
                 .resize()
                 .oneTime(true)
             );
