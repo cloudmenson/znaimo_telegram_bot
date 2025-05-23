@@ -568,6 +568,12 @@ bot.on("message", async (ctx, next) => {
 
     // --- Блок редагування профілю ---
     if (user && user.editStep) {
+      // Allow cancel during edit flow
+      if (ctx.message.text === "Відмінити" || ctx.message.text === "/cancel") {
+        user.editStep = null;
+        await saveUser(user);
+        return ctx.reply("Редагування профілю скасовано ❌", mainMenu);
+      }
       try {
         switch (user.editStep) {
           case "edit_name":
