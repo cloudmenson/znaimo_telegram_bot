@@ -626,7 +626,7 @@ bot.on("message", async (ctx, next) => {
                   : `Фото додано (${count}/3). Максимум досягнуто. Натисніть «Готово».`;
               return ctx.reply(
                 text,
-                Markup.keyboard([["Готово"]])
+                Markup.keyboard([["Готово", "Відмінити"]])
                   .resize()
                   .oneTime(true)
               );
@@ -638,7 +638,7 @@ bot.on("message", async (ctx, next) => {
               if (!user.data.photos || user.data.photos.length === 0) {
                 return ctx.reply(
                   "Будь ласка, надішліть хоча б одне фото.",
-                  Markup.keyboard([["Готово"]])
+                  Markup.keyboard([["Готово", "Відмінити"]])
                     .resize()
                     .oneTime(true)
                 );
@@ -649,7 +649,7 @@ bot.on("message", async (ctx, next) => {
             }
             return ctx.reply(
               "Надішліть фото або натисніть «Готово».",
-              Markup.keyboard([["Готово"]])
+              Markup.keyboard([["Готово", "Відмінити"]])
                 .resize()
                 .oneTime(true)
             );
