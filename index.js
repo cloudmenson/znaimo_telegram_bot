@@ -102,14 +102,18 @@ const searchMenu = Markup.keyboard([["💝", "❌", "📝 Профіль"]])
 const editProfileMenu = Markup.inlineKeyboard([
   [
     Markup.button.callback("✏️ Ім'я", "edit_name"),
-    Markup.button.callback("⚧ Стать", "edit_gender"),
     Markup.button.callback("🎂 Вік", "edit_age"),
   ],
   [
+    Markup.button.callback("⚧ Стать", "edit_gender"),
     Markup.button.callback("🏠 Місто", "edit_city"),
+  ],
+  [
     Markup.button.callback("📝 Опис", "edit_about"),
   ],
-  [Markup.button.callback("🤳 Фото", "edit_photos")],
+  [
+    Markup.button.callback("🤳 Фото", "edit_photos"),
+  ],
 ]);
 
 const startProfile = {
@@ -733,15 +737,6 @@ bot.on("message", async (ctx, next) => {
           await saveUser(user);
           await ctx.reply("🎂 Скільки тобі років?");
           break;
-        case "gender":
-          if (!["Чоловік", "Жінка", "Інше"].includes(ctx.message.text)) {
-            return ctx.reply("Будь ласка, обери стать з клавіатури:");
-          }
-          user.data.gender = ctx.message.text;
-          user.step = "city";
-          await saveUser(user);
-          await ctx.reply("🏠 В якому місті ти живеш?");
-          break;
         case "age":
           {
             const age = parseInt(ctx.message.text, 10);
@@ -749,10 +744,25 @@ bot.on("message", async (ctx, next) => {
               return ctx.reply("Введи коректний вік (16-99):");
             }
             user.data.age = age;
-            user.step = "city";
+            user.step = "gender";
             await saveUser(user);
-            await ctx.reply("🏠 В якому місті ти живеш?");
           }
+          break;
+        case "gender":
+          // Prompt for gender selection if not chosen yet
+          if (!ctx.message.text || !["Чоловік","Жінка","Інше"].includes(ctx.message.text)) {
+            return ctx.reply(
+              "⚧ Обери стать:",
+              Markup.keyboard([["Чоловік","Жінка","Інше"]])
+                .resize()
+                .oneTime(true)
+            );
+          }
+          // Process selected gender
+          user.data.gender = ctx.message.text;
+          user.step = "city";
+          await saveUser(user);
+          await ctx.reply("🏠 В якому місті ти живеш?");
           break;
         case "city":
           if (!ctx.message.text || ctx.message.text.length < 2) {
