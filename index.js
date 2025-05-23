@@ -126,6 +126,7 @@ const startProfile = {
     city: "",
     about: "",
     photos: [],
+    searchGender: "",   // preferred gender to search
   },
   seen: [],
   finished: false,
@@ -831,10 +832,15 @@ bot.on("message", async (ctx, next) => {
                   .oneTime(true)
               );
             }
-            user.finished = true;
-            user.step = null;
+            // Move to search-gender selection
+            user.step = "searchGender";
             await saveUser(user);
-            return ctx.reply("✅ Ваша анкета готова!", mainMenu);
+            return ctx.reply(
+              "🔎 Які анкети ти хочеш шукати? Обери стать:",
+              Markup.keyboard([["Хлопці","Дівчата","Будь-хто"],["Відмінити"]])
+                .resize()
+                .oneTime(true)
+            );
           }
           return ctx.reply(
             "Надішліть фото або натисніть «Готово».",
@@ -843,6 +849,26 @@ bot.on("message", async (ctx, next) => {
               .oneTime(true)
           );
           break;
+        case "searchGender":
+          if (
+            !["Хлопці","Дівчата","Будь-хто","Відмінити"].includes(ctx.message.text)
+          ) {
+            return ctx.reply(
+              "🔎 Будь ласка, обери стать з клавіатури:",
+              Markup.keyboard([["Хлопці","Дівчата","Будь-хто"],["Відмінити"]])
+                .resize()
+                .oneTime(true)
+            );
+          }
+          if (ctx.message.text === "Відмінити") {
+            user.data.searchGender = "";
+          } else {
+            user.data.searchGender = ctx.message.text;
+          }
+          user.finished = true;
+          user.step = null;
+          await saveUser(user);
+          return ctx.reply("✅ Ваша анкета готова!", mainMenu);
         default:
           await ctx.reply("Щось пішло не так. /start щоб почати спочатку.");
       }
@@ -868,15 +894,26 @@ async function handleSearch(ctx, user, id, isInline = false) {
 
     const seen = user.seen || [];
     const allUsers = await getAllUsers();
-    const others = allUsers.filter(
+    // Фільтрація за статтю для пошуку
+    let filtered = allUsers.filter(
       (u) =>
         u.id !== id &&
         u.finished &&
         !seen.includes(u.id) &&
         u.id !== user.currentView
     );
+    // Застосувати фільтр по статі пошуку, якщо вибрано
+    if (user.data && user.data.searchGender && user.data.searchGender !== "" && user.data.searchGender !== "Будь-хто") {
+      // "Чоловіки" => u.data.gender === "Хлопець"
+      // "Жінки" => u.data.gender === "Дівчина"
+      if (user.data.searchGender === "Хлопці") {
+        filtered = filtered.filter((u) => u.data && u.data.gender === "Хлопець");
+      } else if (user.data.searchGender === "Дівчата") {
+        filtered = filtered.filter((u) => u.data && u.data.gender === "Дівчина");
+      }
+    }
 
-    if (others.length === 0) {
+    if (filtered.length === 0) {
       user.currentView = null; // <--- reset
       await saveUser(user);
       if (isInline) {
@@ -890,7 +927,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
       return;
     }
 
-    const other = others[Math.floor(Math.random() * others.length)];
+    const other = filtered[Math.floor(Math.random() * filtered.length)];
 
     user.currentView = other.id;
     await saveUser(user);
