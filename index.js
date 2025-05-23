@@ -469,7 +469,10 @@ bot.action("edit_name", async (ctx) => {
     }
     user.editStep = "edit_name";
     await saveUser(user);
-    await ctx.editMessageText("✏️ Введи нове імʼя:");
+    await ctx.editMessageText(
+      "✏️ Введи нове імʼя:",
+      Markup.keyboard([["Відмінити"]]).resize().oneTime(true)
+    );
   } catch (e) {
     console.error("EDIT_NAME ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
@@ -484,7 +487,10 @@ bot.action("edit_age", async (ctx) => {
     }
     user.editStep = "edit_age";
     await saveUser(user);
-    await ctx.editMessageText("🎂 Введи новий вік:");
+    await ctx.editMessageText(
+      "🎂 Введи новий вік:",
+      Markup.keyboard([["Відмінити"]]).resize().oneTime(true)
+    );
   } catch (e) {
     console.error("EDIT_AGE ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
@@ -499,7 +505,10 @@ bot.action("edit_city", async (ctx) => {
     }
     user.editStep = "edit_city";
     await saveUser(user);
-    await ctx.editMessageText("🏠 Введи нову назву міста:");
+    await ctx.editMessageText(
+      "🏠 Введи нову назву міста:",
+      Markup.keyboard([["Відмінити"]]).resize().oneTime(true)
+    );
   } catch (e) {
     console.error("EDIT_CITY ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
@@ -514,7 +523,10 @@ bot.action("edit_about", async (ctx) => {
     }
     user.editStep = "edit_about";
     await saveUser(user);
-    await ctx.editMessageText("📝 Введи новий опис (5-200 символів):");
+    await ctx.editMessageText(
+      "📝 Введи новий опис (5-200 символів):",
+      Markup.keyboard([["Відмінити"]]).resize().oneTime(true)
+    );
   } catch (e) {
     console.error("EDIT_ABOUT ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
@@ -533,7 +545,7 @@ bot.action("edit_photos", async (ctx) => {
     // Запитуємо фото через reply-клавіатуру
     await ctx.reply(
       "📸 Надішліть до 3 фото. Коли готові — натисніть «Готово».",
-      Markup.keyboard([["Готово"]])
+      Markup.keyboard([["Готово", "Відмінити"]])
         .resize()
         .oneTime(true)
     );
