@@ -540,6 +540,8 @@ bot.action("edit_photos", async (ctx) => {
       return ctx.answerCbQuery("Користувача не знайдено.");
     }
     user.editStep = "edit_photos";
+    // Backup existing photos in case of cancellation
+    user._backupPhotos = user.data.photos ? [...user.data.photos] : [];
     user.data.photos = [];
     await saveUser(user);
     // Запитуємо фото через reply-клавіатуру
@@ -571,6 +573,11 @@ bot.on("message", async (ctx, next) => {
       // Allow cancel during edit flow
       if (ctx.message.text === "Відмінити" || ctx.message.text === "/cancel") {
         user.editStep = null;
+        // Restore photos if we had a backup
+        if (user._backupPhotos) {
+          user.data.photos = [...user._backupPhotos];
+          delete user._backupPhotos;
+        }
         await saveUser(user);
         return ctx.reply("Редагування профілю скасовано ❌", mainMenu);
       }
@@ -650,6 +657,10 @@ bot.on("message", async (ctx, next) => {
                 );
               }
               user.editStep = null;
+              // Clear backup after successful update
+              if (user._backupPhotos) {
+                delete user._backupPhotos;
+              }
               await saveUser(user);
               return ctx.reply("✅ Фото профілю оновлено!", mainMenu);
             }
