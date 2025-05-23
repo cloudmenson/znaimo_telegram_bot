@@ -102,6 +102,7 @@ const searchMenu = Markup.keyboard([["💝", "❌", "📝 Профіль"]])
 const editProfileMenu = Markup.inlineKeyboard([
   [
     Markup.button.callback("✏️ Ім'я", "edit_name"),
+    Markup.button.callback("⚧ Стать", "edit_gender"),
     Markup.button.callback("🎂 Вік", "edit_age"),
   ],
   [
@@ -116,6 +117,7 @@ const startProfile = {
   editStep: null,
   data: {
     name: "",
+    gender: "",
     age: "",
     city: "",
     about: "",
@@ -471,10 +473,32 @@ bot.action("edit_name", async (ctx) => {
     await saveUser(user);
     await ctx.reply(
       "✏️ Введи нове імʼя:",
-      Markup.keyboard([["Відмінити"]]).resize().oneTime(true)
+      Markup.keyboard([["Відмінити"]])
+        .resize()
+        .oneTime(true)
     );
   } catch (e) {
     console.error("EDIT_NAME ERROR:", e);
+    await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
+  }
+});
+bot.action("edit_gender", async (ctx) => {
+  try {
+    const id = ctx.from.id;
+    let user = await loadUser(id);
+    if (!user) {
+      return ctx.answerCbQuery("Сталася помилка: не знайдено користувача.");
+    }
+    user.editStep = "edit_gender";
+    await saveUser(user);
+    return ctx.reply(
+      "⚧ Обери стать:",
+      Markup.keyboard([["Хлопець", "Дівчина", "Інше"], ["Відмінити"]])
+        .resize()
+        .oneTime(true)
+    );
+  } catch (e) {
+    console.error("EDIT_GENDER ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
   }
 });
@@ -489,7 +513,9 @@ bot.action("edit_age", async (ctx) => {
     await saveUser(user);
     await ctx.reply(
       "🎂 Введи новий вік:",
-      Markup.keyboard([["Відмінити"]]).resize().oneTime(true)
+      Markup.keyboard([["Відмінити"]])
+        .resize()
+        .oneTime(true)
     );
   } catch (e) {
     console.error("EDIT_AGE ERROR:", e);
@@ -507,7 +533,9 @@ bot.action("edit_city", async (ctx) => {
     await saveUser(user);
     await ctx.reply(
       "🏠 Введи нову назву міста:",
-      Markup.keyboard([["Відмінити"]]).resize().oneTime(true)
+      Markup.keyboard([["Відмінити"]])
+        .resize()
+        .oneTime(true)
     );
   } catch (e) {
     console.error("EDIT_CITY ERROR:", e);
@@ -525,7 +553,9 @@ bot.action("edit_about", async (ctx) => {
     await saveUser(user);
     await ctx.reply(
       "📝 Введи новий опис (5-200 символів):",
-      Markup.keyboard([["Відмінити"]]).resize().oneTime(true)
+      Markup.keyboard([["Відмінити"]])
+        .resize()
+        .oneTime(true)
     );
   } catch (e) {
     console.error("EDIT_ABOUT ERROR:", e);
@@ -591,6 +621,15 @@ bot.on("message", async (ctx, next) => {
             user.editStep = null;
             await saveUser(user);
             await ctx.reply("Імʼя змінено ✅", mainMenu);
+            break;
+          case "edit_gender":
+            if (!["Хлопець", "Дівчина", "Інше"].includes(ctx.message.text)) {
+              return ctx.reply("Будь ласка, обери стать з клавіатури:");
+            }
+            user.data.gender = ctx.message.text;
+            user.editStep = null;
+            await saveUser(user);
+            await ctx.reply("Стать змінено ✅", mainMenu);
             break;
           case "edit_age":
             {
@@ -693,6 +732,15 @@ bot.on("message", async (ctx, next) => {
           user.step = "age";
           await saveUser(user);
           await ctx.reply("🎂 Скільки тобі років?");
+          break;
+        case "gender":
+          if (!["Чоловік", "Жінка", "Інше"].includes(ctx.message.text)) {
+            return ctx.reply("Будь ласка, обери стать з клавіатури:");
+          }
+          user.data.gender = ctx.message.text;
+          user.step = "city";
+          await saveUser(user);
+          await ctx.reply("🏠 В якому місті ти живеш?");
           break;
         case "age":
           {
@@ -1064,7 +1112,6 @@ bot.command("blacklist", async (ctx) => {
   // TODO: імплементувати додавання в чорний список
   await ctx.reply("🚫 Додати в чорний список — у розробці.");
 });
-
 
 // language
 bot.command("language", async (ctx) => {
