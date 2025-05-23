@@ -108,15 +108,9 @@ const editProfileMenu = Markup.inlineKeyboard([
     Markup.button.callback("⚧ Стать", "edit_gender"),
     Markup.button.callback("🏠 Місто", "edit_city"),
   ],
-  [
-    Markup.button.callback("📝 Опис", "edit_about"),
-  ],
-  [
-    Markup.button.callback("🔎 Пошук статі", "edit_searchGender"),
-  ],
-  [
-    Markup.button.callback("🤳 Фото", "edit_photos"),
-  ],
+  [Markup.button.callback("📝 Опис", "edit_about")],
+  [Markup.button.callback("🔎 Пошук статі", "edit_searchGender")],
+  [Markup.button.callback("🤳 Фото", "edit_photos")],
 ]);
 
 const startProfile = {
@@ -129,7 +123,7 @@ const startProfile = {
     city: "",
     about: "",
     photos: [],
-    searchGender: "",   // preferred gender to search
+    searchGender: "", // preferred gender to search
   },
   seen: [],
   finished: false,
@@ -578,7 +572,7 @@ bot.action("edit_searchGender", async (ctx) => {
   await saveUser(user);
   return ctx.reply(
     "🔎 Які анкети хочеш шукати? Обери стать:",
-    Markup.keyboard([["Хлопці","Дівчата","Будь-хто"],["Відмінити"]])
+    Markup.keyboard([["Хлопці", "Дівчата", "Будь-хто"], ["Відмінити"]])
       .resize()
       .oneTime(true)
   );
@@ -635,9 +629,7 @@ bot.on("message", async (ctx, next) => {
       try {
         switch (user.editStep) {
           case "edit_searchGender":
-            if (
-              !["Хлопці","Дівчата","Будь-хто"].includes(ctx.message.text)
-            ) {
+            if (!["Хлопці", "Дівчата", "Будь-хто"].includes(ctx.message.text)) {
               return ctx.reply("Будь ласка, обери стать з клавіатури:");
             }
             user.data.searchGender = ctx.message.text;
@@ -765,28 +757,26 @@ bot.on("message", async (ctx, next) => {
           await saveUser(user);
           await ctx.reply("🎂 Скільки тобі років?");
           break;
-        case "age":
-          {
-            const age = parseInt(ctx.message.text, 10);
-            if (isNaN(age) || age < 16 || age > 99) {
-              return ctx.reply("Введи коректний вік (16-99):");
-            }
-            user.data.age = age;
-            user.step = "gender";
-            await saveUser(user);
+        case "age": {
+          const age = parseInt(ctx.message.text, 10);
+          if (isNaN(age) || age < 16 || age > 99) {
+            return ctx.reply("Введи коректний вік (16-99):");
           }
-          break;
+          user.data.age = age;
+          user.step = "gender";
+          await saveUser(user);
+          // Prompt for gender immediately
+          return ctx.reply(
+            "⚧ Обери стать:",
+            Markup.keyboard([["Хлопець", "Дівчина", "Інше"]])
+              .resize()
+              .oneTime(true)
+          );
+        }
         case "gender":
-          // Prompt for gender selection if not chosen yet
-          if (!ctx.message.text || !["Хлопець","Дівчина","Інше"].includes(ctx.message.text)) {
-            return ctx.reply(
-              "⚧ Обери стать:",
-              Markup.keyboard([["Хлопець","Дівчина","Інше"]])
-                .resize()
-                .oneTime(true)
-            );
+          if (!["Хлопець", "Дівчина", "Інше"].includes(ctx.message.text)) {
+            return ctx.reply("Будь ласка, обери стать з клавіатури:");
           }
-          // Process selected gender
           user.data.gender = ctx.message.text;
           user.step = "city";
           await saveUser(user);
@@ -864,7 +854,10 @@ bot.on("message", async (ctx, next) => {
             await saveUser(user);
             return ctx.reply(
               "🔎 Які анкети ти хочеш шукати? Обери стать:",
-              Markup.keyboard([["Хлопці","Дівчата","Будь-хто"],["Відмінити"]])
+              Markup.keyboard([
+                ["Хлопці", "Дівчата", "Будь-хто"],
+                ["Відмінити"],
+              ])
                 .resize()
                 .oneTime(true)
             );
@@ -878,11 +871,16 @@ bot.on("message", async (ctx, next) => {
           break;
         case "searchGender":
           if (
-            !["Хлопці","Дівчата","Будь-хто","Відмінити"].includes(ctx.message.text)
+            !["Хлопці", "Дівчата", "Будь-хто", "Відмінити"].includes(
+              ctx.message.text
+            )
           ) {
             return ctx.reply(
               "🔎 Будь ласка, обери стать з клавіатури:",
-              Markup.keyboard([["Хлопці","Дівчата","Будь-хто"],["Відмінити"]])
+              Markup.keyboard([
+                ["Хлопці", "Дівчата", "Будь-хто"],
+                ["Відмінити"],
+              ])
                 .resize()
                 .oneTime(true)
             );
@@ -930,13 +928,22 @@ async function handleSearch(ctx, user, id, isInline = false) {
         u.id !== user.currentView
     );
     // Застосувати фільтр по статі пошуку, якщо вибрано
-    if (user.data && user.data.searchGender && user.data.searchGender !== "" && user.data.searchGender !== "Будь-хто") {
+    if (
+      user.data &&
+      user.data.searchGender &&
+      user.data.searchGender !== "" &&
+      user.data.searchGender !== "Будь-хто"
+    ) {
       // "Чоловіки" => u.data.gender === "Хлопець"
       // "Жінки" => u.data.gender === "Дівчина"
       if (user.data.searchGender === "Хлопці") {
-        filtered = filtered.filter((u) => u.data && u.data.gender === "Хлопець");
+        filtered = filtered.filter(
+          (u) => u.data && u.data.gender === "Хлопець"
+        );
       } else if (user.data.searchGender === "Дівчата") {
-        filtered = filtered.filter((u) => u.data && u.data.gender === "Дівчина");
+        filtered = filtered.filter(
+          (u) => u.data && u.data.gender === "Дівчина"
+        );
       }
     }
 
