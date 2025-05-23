@@ -112,6 +112,9 @@ const editProfileMenu = Markup.inlineKeyboard([
     Markup.button.callback("📝 Опис", "edit_about"),
   ],
   [
+    Markup.button.callback("🔎 Пошук статі", "edit_searchGender"),
+  ],
+  [
     Markup.button.callback("🤳 Фото", "edit_photos"),
   ],
 ]);
@@ -567,6 +570,19 @@ bot.action("edit_about", async (ctx) => {
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
   }
 });
+// Edit searchGender
+bot.action("edit_searchGender", async (ctx) => {
+  const id = ctx.from.id;
+  const user = await loadUser(id);
+  user.editStep = "edit_searchGender";
+  await saveUser(user);
+  return ctx.reply(
+    "🔎 Які анкети хочеш шукати? Обери стать:",
+    Markup.keyboard([["Хлопці","Дівчата","Будь-хто"],["Відмінити"]])
+      .resize()
+      .oneTime(true)
+  );
+});
 bot.action("edit_photos", async (ctx) => {
   try {
     const id = ctx.from.id;
@@ -618,6 +634,17 @@ bot.on("message", async (ctx, next) => {
       }
       try {
         switch (user.editStep) {
+          case "edit_searchGender":
+            if (
+              !["Хлопці","Дівчата","Будь-хто"].includes(ctx.message.text)
+            ) {
+              return ctx.reply("Будь ласка, обери стать з клавіатури:");
+            }
+            user.data.searchGender = ctx.message.text;
+            user.editStep = null;
+            await saveUser(user);
+            await ctx.reply("Налаштування пошуку статі змінено ✅", mainMenu);
+            break;
           case "edit_name":
             if (!ctx.message.text || ctx.message.text.length < 2) {
               return ctx.reply("Введи коректне імʼя:");
