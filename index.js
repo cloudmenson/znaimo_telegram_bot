@@ -195,10 +195,10 @@ async function checkPendingLikes(ctx, user) {
 }
 
 bot.start(async (ctx) => {
-  // 0) Check if finished user already exists
+  // 0) Check if user already exists in DB
   const existing = await loadUser(ctx.from.id);
-  if (existing && existing.finished) {
-    return ctx.reply('Вітаю з поверненням!', mainMenu);
+  if (existing) {
+    return ctx.reply('У вас вже є анкета.', mainMenu);
   }
   // 1) Індикатор “typing…”
   await ctx.sendChatAction("typing");
