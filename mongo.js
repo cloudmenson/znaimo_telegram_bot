@@ -23,10 +23,13 @@ async function saveUser(user, tryCount = 0) {
     user.version = 1;
   }
 
+  // Prevent _id conflicts on upsert by excluding it from the update
+  const updateDoc = { ...user };
+  delete updateDoc._id;
   // Attempt to update the document only if version matches
   const result = await db.collection("users").findOneAndUpdate(
     { id: user.id, version: user.version },
-    { $set: { ...user, version: user.version + 1 } },
+    { $set: { ...updateDoc, version: user.version + 1 } },
     { upsert: true, returnDocument: "after" }
   );
 
