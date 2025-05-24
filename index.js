@@ -1161,8 +1161,8 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
             likedUser.seen.push(id);
             await saveUser(likedUser);
           }
-          // After mutual like, return and do not proceed to search
-          return;
+          // After mutual like, proceed to next profile
+          return await handleSearch(ctx, user, id, isInline);
         } else {
           if (!likedUser.pendingLikes) likedUser.pendingLikes = [];
           if (!likedUser.pendingLikes.includes(user.id)) {
