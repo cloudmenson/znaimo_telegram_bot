@@ -149,7 +149,7 @@ function prettyProfile(user) {
   if (city) {
     profileText += `<b>• Місто:</b> ${city}\n`;
   }
-  profileText += `<b>• Про себе:</b> ${about}`;
+  profileText += `\n\n<b>• Про себе:</b> ${about}`;
   return profileText;
 }
 
