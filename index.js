@@ -4,10 +4,10 @@ require("dotenv").config();
 
 const { loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
 
-const NodeGeocoder = require('node-geocoder');
-const geolib = require('geolib');
+const NodeGeocoder = require("node-geocoder");
+const geolib = require("geolib");
 // Configure geocoder to use OpenStreetMap
-const geocoder = NodeGeocoder({ provider: 'openstreetmap' });
+const geocoder = NodeGeocoder({ provider: "openstreetmap" });
 
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -687,7 +687,7 @@ bot.on("message", async (ctx, next) => {
                 user.data.longitude = geoRes[0].longitude;
               }
             } catch (e) {
-              console.error('GEOCODE ERROR:', e);
+              console.error("GEOCODE ERROR:", e);
             }
             await saveUser(user);
             user.editStep = null;
@@ -812,10 +812,10 @@ bot.on("message", async (ctx, next) => {
               user.data.longitude = geoRes[0].longitude;
             }
           } catch (e) {
-            console.error('GEOCODE ERROR:', e);
+            console.error("GEOCODE ERROR:", e);
           }
-          await saveUser(user);
           user.step = "about";
+          await saveUser(user);
           await ctx.reply(
             "📝 Розкажи про себе коротко (до 200 символів):",
             Markup.removeKeyboard()
@@ -952,15 +952,13 @@ async function handleSearch(ctx, user, id, isInline = false) {
       user.data.searchGender !== "" &&
       user.data.searchGender !== "Будь-хто"
     ) {
-      const target = user.data.searchGender === "Хлопці" ? "Хлопець" : "Дівчина";
+      const target =
+        user.data.searchGender === "Хлопці" ? "Хлопець" : "Дівчина";
       filtered = filtered.filter((u) => u.data.gender === target);
     }
     // Sort by proximity if coordinates are available
     let candidates = filtered;
-    if (
-      user.data.latitude != null &&
-      user.data.longitude != null
-    ) {
+    if (user.data.latitude != null && user.data.longitude != null) {
       candidates = filtered
         .filter((u) => u.data.latitude != null && u.data.longitude != null)
         .map((u) => ({
