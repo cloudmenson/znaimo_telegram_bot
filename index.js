@@ -3,126 +3,13 @@ const { Telegraf, Markup } = require("telegraf");
 require("dotenv").config();
 
 const { getDb, loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
-const { faker } = require("@faker-js/faker");
 
 const NodeGeocoder = require("node-geocoder");
 const geolib = require("geolib");
 // Configure geocoder to use OpenStreetMap
 const geocoder = NodeGeocoder({ provider: "openstreetmap" });
 
-// Ukrainian names and cities for mock profiles
-const ukrMaleNames = [
-  "Андрій", "Богдан", "Владислав", "Григорій", "Дмитро", "Євген",
-  "Іван", "Кирило", "Леонід", "Максим", "Назар", "Олександр", "Павло",
-  "Роман", "Сергій", "Тарас", "Юрій", "Ярослав"
-];
-const ukrFemaleNames = [
-  "Анастасія", "Богдана", "Валерія", "Ганна", "Дарина", "Євгенія",
-  "Ірина", "Катерина", "Людмила", "Марія", "Наталія", "Олена",
-  "Ольга", "Світлана", "Софія", "Тетяна", "Юлія", "Яна"
-];
-const ukrCities = [
-  "Київ", "Львів", "Харків", "Одеса", "Дніпро", "Запоріжжя", "Вінниця", "Чернівці",
-  "Тернопіль", "Івано-Франківськ", "Полтава", "Кропивницький", "Житомир", "Черкаси",
-  "Суми", "Ужгород", "Миколаїв", "Херсон", "Чернігів", "Рівне", "Луцьк"
-];
-const aboutOptions = [
-  "Люблю подорожі та нові знайомства.",
-  "Обожнюю каву і цікаві розмови.",
-  "Пишу вірші та граю на гітарі.",
-  "Захоплююсь спортом і активним відпочинком.",
-  "Шукаю нових друзів для спільних пригод.",
-  "Відкрита до нових вражень та знайомств.",
-  "Ціную щирість та гумор.",
-  "Працюю в IT, люблю технології.",
-  "Мрію відвідати всі куточки України.",
-  "Обожнюю читати книги та дивитись фільми.",
-  "Шукаю натхнення у творчості.",
-  "Люблю тварин і природу.",
-  "Завжди готова до нових знайомств!",
-  "Шукаю людину, з якою буде легко та весело.",
-  "Ціную доброту та щирість у людях."
-];
 
-// Use global fetch (Node 18+)
-async function seedMockUsers() {
-  const db = await getDb();
-  const coll = db.collection("users");
-  // Delete existing mock users
-  await coll.deleteMany({ mock: true });
-
-  let mocks = [];
-  try {
-    // Try fetching real-looking profiles
-    const response = await fetch('https://randomuser.me/api/?results=100&inc=login,picture,dob,gender&noinfo');
-    const data = await response.json();
-    mocks = data.results.map((u, idx) => {
-      const genderType = faker.datatype.boolean() ? 'male' : 'female';
-      const label = genderType === 'male' ? 'Хлопець' : 'Дівчина';
-      const name = genderType === 'male'
-        ? faker.helpers.arrayElement(ukrMaleNames)
-        : faker.helpers.arrayElement(ukrFemaleNames);
-      const city = faker.helpers.arrayElement(ukrCities);
-      return {
-        mock: true,
-        id: 200000000 + idx,
-        username: u.login.username,
-        step: null,
-        editStep: null,
-        finished: true,
-        currentView: null,
-        pendingLikes: [],
-        seen: [],
-        data: {
-          name,
-          gender: label,
-          age: u.dob?.age || faker.number.int({ min: 18, max: 60 }),
-          city,
-          about: faker.helpers.arrayElement(aboutOptions),
-          photos: [u.picture.large],
-          searchGender: "",
-          latitude: null,
-          longitude: null,
-        },
-      };
-    });
-  } catch (fetchError) {
-    console.error('Fetch randomuser failed, falling back to Faker mocks:', fetchError);
-    // Generate 100 Faker-based mocks
-    for (let i = 0; i < 100; i++) {
-      const genderType = faker.datatype.boolean() ? 'male' : 'female';
-      const label = genderType === 'male' ? 'Хлопець' : 'Дівчина';
-      const name = genderType === 'male'
-        ? faker.helpers.arrayElement(ukrMaleNames)
-        : faker.helpers.arrayElement(ukrFemaleNames);
-      const city = faker.helpers.arrayElement(ukrCities);
-      mocks.push({
-        mock: true,
-        id: 200000000 + i,
-        username: faker.internet.username(),
-        step: null,
-        editStep: null,
-        finished: true,
-        currentView: null,
-        pendingLikes: [],
-        seen: [],
-        data: {
-          name,
-          gender: label,
-          age: faker.number.int({ min: 18, max: 60 }),
-          city,
-          about: faker.helpers.arrayElement(aboutOptions),
-          photos: [`https://i.pravatar.cc/300?img=${i + 1}`],
-          searchGender: "",
-          latitude: null,
-          longitude: null,
-        },
-      });
-    }
-  }
-  await coll.insertMany(mocks);
-  console.log(`✅ Seeded ${mocks.length} mock users`);
-}
 
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -1250,8 +1137,6 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
     const deleteResult = await usersColl.deleteMany({ mock: true });
     console.log(`🗑️ Deleted ${deleteResult.deletedCount} mock users`);
 
-    // Seed mock users every time on startup
-    await seedMockUsers();
 
     console.log("--------- BOT IS RUNNING! ---------");
     const WEBHOOK_PATH = "/bot" + process.env.BOT_TOKEN;
