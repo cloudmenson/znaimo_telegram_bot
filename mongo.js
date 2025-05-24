@@ -32,4 +32,4 @@ async function getAllUsers() {
   return db.collection("users").find().toArray();
 }
 
-module.exports = { loadUser, saveUser, removeUser, getAllUsers };
+module.exports = { getDb, loadUser, saveUser, removeUser, getAllUsers };
