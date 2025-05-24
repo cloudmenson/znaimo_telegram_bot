@@ -948,14 +948,16 @@ async function handleSearch(ctx, user, id, isInline = false) {
     if (hasPending) return;
 
     const seen = user.seen || [];
+    const disliked = user.disliked || [];
     const allUsers = await getAllUsers();
-    // Initial filter: exclude self, unfinished, seen, currentView, and users without valid photo(s)
+    // Initial filter: exclude self, unfinished, seen, disliked, currentView, and users without valid photo(s)
     let filtered = allUsers.filter(
       (u) =>
         u.id !== id &&
         u.finished &&
         !seen.includes(u.id) &&
         u.id !== user.currentView &&
+        !disliked.includes(u.id) &&
         Array.isArray(u.data.photos) &&
         u.data.photos.some(Boolean)
     );
@@ -993,7 +995,8 @@ async function handleSearch(ctx, user, id, isInline = false) {
     const other = candidates.length ? candidates[0] : null;
 
     if (!other) {
-      user.currentView = null; // <--- reset
+      user.currentView = null;
+      user.disliked = [];
       await saveUser(user);
       if (isInline) {
         await ctx.editMessageText(
@@ -1052,10 +1055,14 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
       return await handleSearch(ctx, user, id, isInline);
     }
 
-    if (!user.seen.includes(otherId)) {
-      user.seen.push(otherId);
+    if (action === "dislike") {
+      // Не додаємо otherId до seen при дизлайку
+    } else {
+      if (!user.seen.includes(otherId)) {
+        user.seen.push(otherId);
+      }
+      await saveUser(user);
     }
-    await saveUser(user);
 
     if (likedUser) {
       if (action === "like") {
@@ -1218,6 +1225,13 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
           }
         }
       }
+    }
+    if (action === "dislike") {
+      if (!user.disliked) user.disliked = [];
+      if (!user.disliked.includes(otherId)) {
+        user.disliked.push(otherId);
+      }
+      await saveUser(user);
     }
     await handleSearch(ctx, user, id, isInline);
   } catch (e) {
