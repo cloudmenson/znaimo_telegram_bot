@@ -648,6 +648,29 @@ bot.action("edit_photos", async (ctx) => {
   }
 });
 
+bot.action(/^blacklist_confirm_(\d+)$/, async (ctx) => {
+  const blockedId = parseInt(ctx.match[1]);
+  const id = ctx.from.id;
+  const user = await loadUser(id);
+  if (!user || !user.finished)
+    return ctx.reply("Помилка: не знайдено ваш профіль.");
+
+  user.blacklist = user.blacklist || [];
+  if (!user.blacklist.includes(blockedId)) {
+    user.blacklist.push(blockedId);
+    await saveUser(user);
+    await ctx.reply("Користувача додано до чорного списку.");
+  } else {
+    await ctx.reply("Цей користувач вже у чорному списку.");
+  }
+
+  await handleSearch(ctx, user, id, false);
+});
+
+bot.action("blacklist_cancel", async (ctx) => {
+  await ctx.reply("Дію скасовано.");
+});
+
 // Обробка повідомлень (тільки для введення тексту/фото/етапи)
 bot.on("message", async (ctx, next) => {
   try {
@@ -986,6 +1009,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
         !seen.includes(u.id) &&
         u.id !== user.currentView &&
         !disliked.includes(u.id) &&
+        !(user.blacklist || []).includes(u.id) &&
         Array.isArray(u.data.photos) &&
         u.data.photos.some(Boolean)
     );
@@ -1464,11 +1488,38 @@ bot.command("privacy", async (ctx) => {
 bot.command("blacklist", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
+
   if (!user || !user.finished) {
     return ctx.reply("Спочатку створи анкету через /start.");
   }
-  // TODO: імплементувати додавання в чорний список
-  await ctx.reply("🚫 Додати в чорний список — у розробці.");
+
+  if (!user.currentView) {
+    // Перегляд чорного списку
+    const blacklist = user.blacklist || [];
+    if (!blacklist.length) {
+      return ctx.reply("У тебе немає заблокованих користувачів.");
+    }
+
+    let message = "🧾 <b>Заблоковані користувачі:</b>\n";
+    for (let uid of blacklist) {
+      const u = await loadUser(uid);
+      if (u) {
+        const name = u.data?.name || u.username || uid;
+        message += `• ${name} — /unblock_${uid}\n`;
+      }
+    }
+
+    return ctx.replyWithHTML(message);
+  }
+
+  const otherId = user.currentView;
+  await ctx.reply(
+    `🚫 Ви хочете додати цього користувача до чорного списку?`,
+    Markup.inlineKeyboard([
+      [Markup.button.callback("✅ Так", `blacklist_confirm_${otherId}`)],
+      [Markup.button.callback("❌ Ні", `blacklist_cancel`)],
+    ])
+  );
 });
 
 // language
