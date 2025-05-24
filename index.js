@@ -657,8 +657,10 @@ bot.action(/^blacklist_confirm_(\d+)$/, async (ctx) => {
     return ctx.reply("Помилка: не знайдено ваш профіль.");
 
   // Дозволяємо додавання до чорного списку лише під час перегляду анкети в пошуку
-  if (user.lastAction !== 'search' || user.currentView !== blockedId) {
-    return ctx.reply("❗ Заблокувати можна лише під час перегляду анкети в пошуку.");
+  if (user.lastAction !== "search" || user.currentView !== blockedId) {
+    return ctx.reply(
+      "❗ Заблокувати можна лише під час перегляду анкети в пошуку."
+    );
   }
 
   user.blacklist = user.blacklist || [];
@@ -1065,7 +1067,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
     if (!other) {
       user.currentView = null;
       user.disliked = [];
-      user.lastAction = 'search';
+      user.lastAction = "search";
       await saveUser(user);
       if (isInline) {
         await ctx.editMessageText(
@@ -1079,7 +1081,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
     }
 
     user.currentView = other.id;
-    user.lastAction = 'search';
+    user.lastAction = "search";
     await saveUser(user);
 
     const photos = other.data.photos;
@@ -1511,8 +1513,10 @@ bot.command("blacklist", async (ctx) => {
   }
 
   // Дозволяємо чорний список лише якщо користувач у режимі пошуку анкет
-  if (user.lastAction !== 'search') {
-    return ctx.reply("❗ Команду /blacklist можна використовувати лише під час перегляду анкет.");
+  if (user.lastAction !== "search") {
+    return ctx.reply(
+      "❗ Команду /blacklist можна використовувати лише під час перегляду анкет."
+    );
   }
 
   if (!user.currentView) {
