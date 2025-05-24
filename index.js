@@ -2,12 +2,50 @@ const express = require("express");
 const { Telegraf, Markup } = require("telegraf");
 require("dotenv").config();
 
-const { loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
+const { getDb, loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
+const { faker } = require("@faker-js/faker");
 
 const NodeGeocoder = require("node-geocoder");
 const geolib = require("geolib");
 // Configure geocoder to use OpenStreetMap
 const geocoder = NodeGeocoder({ provider: "openstreetmap" });
+
+// Seed mock users if collection is empty
+async function seedMockUsers() {
+  const db = await getDb();
+  const coll = db.collection("users");
+  const count = await coll.countDocuments();
+  if (count === 0) {
+    const mocks = [];
+    for (let i = 0; i < 100; i++) {
+      const genderType = faker.helpers.arrayElement(["male", "female"]);
+      const label = genderType === "male" ? "Хлопець" : "Дівчина";
+      mocks.push({
+        id: 200000000 + i,
+        username: faker.internet.userName(),
+        step: null,
+        editStep: null,
+        finished: true,
+        currentView: null,
+        pendingLikes: [],
+        seen: [],
+        data: {
+          name: faker.name.firstName(genderType),
+          gender: label,
+          age: faker.datatype.number({ min: 18, max: 60 }),
+          city: faker.address.city(),
+          about: faker.lorem.sentences(2),
+          photos: [`https://i.pravatar.cc/300?img=${i + 1}`],
+          searchGender: "",
+          latitude: null,
+          longitude: null,
+        },
+      });
+    }
+    await coll.insertMany(mocks);
+    console.log("✅ Seeded 100 mock users");
+  }
+}
 
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -1112,32 +1150,37 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
 }
 
 // --------------------- Запуск ------------------------
-console.log("--------- BOT IS RUNNING! ---------");
+;(async () => {
+  try {
+    // Seed mock users once
+    await seedMockUsers();
 
-const WEBHOOK_PATH = "/bot" + process.env.BOT_TOKEN;
-const WEBHOOK_URL = `https://${
-  process.env.RENDER_EXTERNAL_HOSTNAME || "your-app-name.onrender.com"
-}${WEBHOOK_PATH}`;
+    console.log("--------- BOT IS RUNNING! ---------");
+    const WEBHOOK_PATH = "/bot" + process.env.BOT_TOKEN;
+    const WEBHOOK_URL = `https://${process.env.RENDER_EXTERNAL_HOSTNAME || "your-app-name.onrender.com"}${WEBHOOK_PATH}`;
 
-// Встановлюємо список команд бота
-(async () => {
-  await bot.telegram.setMyCommands([
-    { command: "profile", description: "📝 Профіль" },
-    { command: "referral", description: "🎁 Реферальна система" },
-    { command: "privacy", description: "🔒 Політика приватності" },
-    { command: "blacklist", description: "🚫 Додати в чорний список" },
-    { command: "language", description: "🌐 Мова" },
-  ]);
-  await bot.telegram.setWebhook(WEBHOOK_URL);
+    // Set bot commands and webhook
+    await bot.telegram.setMyCommands([
+      { command: "profile", description: "📝 Профіль" },
+      { command: "referral", description: "🎁 Реферальна система" },
+      { command: "privacy", description: "🔒 Політика приватності" },
+      { command: "blacklist", description: "🚫 Додати в чорний список" },
+      { command: "language", description: "🌐 Мова" },
+    ]);
+    await bot.telegram.setWebhook(WEBHOOK_URL);
+
+    // Start webhook listener
+    app.use(bot.webhookCallback(WEBHOOK_PATH));
+    app.get("/", (req, res) => res.send("Znaimo bot is alive!"));
+
+    // Listen on port
+    app.listen(process.env.PORT, () => {
+      console.log(`Server listening on port ${process.env.PORT}`);
+    });
+  } catch (e) {
+    console.error("Startup error:", e);
+  }
 })();
-
-app.use(bot.webhookCallback(WEBHOOK_PATH));
-app.get("/", (req, res) => res.send("Znaimo bot is alive!"));
-
-// Слухаємо порт Render
-app.listen(process.env.PORT, () => {
-  console.log(`Server listening on port ${process.env.PORT}`);
-});
 
 process.once("SIGINT", () => process.exit(0));
 process.once("SIGTERM", () => process.exit(0));
