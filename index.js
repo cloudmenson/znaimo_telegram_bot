@@ -1039,15 +1039,20 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
 
     // Load the liked/disliked user
     const likedUser = await loadUser(otherId);
+    if (!likedUser.seen) likedUser.seen = [];
     // If the liked user is a mock, skip real messaging
     if (likedUser && likedUser.mock) {
       // Treat as a simple like: mark seen and show next profile
-      user.seen = [...(user.seen || []), otherId];
+      if (!user.seen.includes(otherId)) {
+        user.seen.push(otherId);
+      }
       await saveUser(user);
       return await handleSearch(ctx, user, id, isInline);
     }
 
-    user.seen = [...(user.seen || []), otherId];
+    if (!user.seen.includes(otherId)) {
+      user.seen.push(otherId);
+    }
     await saveUser(user);
 
     if (likedUser) {
@@ -1144,6 +1149,16 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
           // Reset currentView after mutual like so profile doesn't reappear
           user.currentView = null;
           await saveUser(user);
+          // Додаємо анкету до seen, якщо ще не додано
+          if (!user.seen.includes(otherId)) {
+            user.seen.push(otherId);
+            await saveUser(user);
+          }
+          // Додаємо id до seen likedUser, якщо ще не додано
+          if (!likedUser.seen.includes(id)) {
+            likedUser.seen.push(id);
+            await saveUser(likedUser);
+          }
           // After mutual like, return and do not proceed to search
           return;
         } else {
