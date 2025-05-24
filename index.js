@@ -10,44 +10,81 @@ const geolib = require("geolib");
 // Configure geocoder to use OpenStreetMap
 const geocoder = NodeGeocoder({ provider: "openstreetmap" });
 
-// Seed mock users if not already seeded (using mock flag)
-// async function seedMockUsers() {
-//   const db = await getDb();
-//   const coll = db.collection("users");
-//   // Check whether mocks have been seeded by a flag
-//   const mockCount = await coll.countDocuments({ mock: true });
-//   if (mockCount === 0) {
-//     const mocks = [];
-//     for (let i = 0; i < 100; i++) {
-//       const genderType = faker.helpers.arrayElement(["male", "female"]);
-//       const label = genderType === "male" ? "Хлопець" : "Дівчина";
-//       mocks.push({
-//         mock: true,
-//         id: 200000000 + i,
-//         username: faker.internet.username(),
-//         step: null,
-//         editStep: null,
-//         finished: true,
-//         currentView: null,
-//         pendingLikes: [],
-//         seen: [],
-//         data: {
-//           name: faker.person.firstName(genderType),
-//           gender: label,
-//           age: faker.number.int({ min: 18, max: 60 }),
-//           city: faker.location.city(),
-//           about: faker.lorem.sentences(2),
-//           photos: [`https://i.pravatar.cc/300?img=${i + 1}`],
-//           searchGender: "",
-//           latitude: null,
-//           longitude: null,
-//         },
-//       });
-//     }
-//     await coll.insertMany(mocks);
-//     console.log("✅ Seeded 100 mock users");
-//   }
-// }
+// Ukrainian names and cities for mock profiles
+const ukrMaleNames = [
+  "Андрій", "Богдан", "Владислав", "Григорій", "Дмитро", "Євген",
+  "Іван", "Кирило", "Леонід", "Максим", "Назар", "Олександр", "Павло",
+  "Роман", "Сергій", "Тарас", "Юрій", "Ярослав"
+];
+const ukrFemaleNames = [
+  "Анастасія", "Богдана", "Валерія", "Ганна", "Дарина", "Євгенія",
+  "Ірина", "Катерина", "Людмила", "Марія", "Наталія", "Олена",
+  "Ольга", "Світлана", "Софія", "Тетяна", "Юлія", "Яна"
+];
+const ukrCities = [
+  "Київ", "Львів", "Харків", "Одеса", "Дніпро", "Запоріжжя", "Вінниця", "Чернівці",
+  "Тернопіль", "Івано-Франківськ", "Полтава", "Кропивницький", "Житомир", "Черкаси",
+  "Суми", "Ужгород", "Миколаїв", "Херсон", "Чернігів", "Рівне", "Луцьк"
+];
+const aboutOptions = [
+  "Люблю подорожі та нові знайомства.",
+  "Обожнюю каву і цікаві розмови.",
+  "Пишу вірші та граю на гітарі.",
+  "Захоплююсь спортом і активним відпочинком.",
+  "Шукаю нових друзів для спільних пригод.",
+  "Відкрита до нових вражень та знайомств.",
+  "Ціную щирість та гумор.",
+  "Працюю в IT, люблю технології.",
+  "Мрію відвідати всі куточки України.",
+  "Обожнюю читати книги та дивитись фільми.",
+  "Шукаю натхнення у творчості.",
+  "Люблю тварин і природу.",
+  "Завжди готова до нових знайомств!",
+  "Шукаю людину, з якою буде легко та весело.",
+  "Ціную доброту та щирість у людях."
+];
+
+async function seedMockUsers() {
+  const db = await getDb();
+  const coll = db.collection("users");
+  // Delete existing mock users
+  await coll.deleteMany({ mock: true });
+  // Generate 100 new Ukrainian mock profiles
+  const mocks = [];
+  for (let i = 0; i < 100; i++) {
+    const genderType = faker.datatype.boolean() ? "male" : "female";
+    const label = genderType === "male" ? "Хлопець" : "Дівчина";
+    const name = genderType === "male"
+      ? faker.helpers.arrayElement(ukrMaleNames)
+      : faker.helpers.arrayElement(ukrFemaleNames);
+    const city = faker.helpers.arrayElement(ukrCities);
+    const about = faker.helpers.arrayElement(aboutOptions);
+    mocks.push({
+      mock: true,
+      id: 200000000 + i,
+      username: faker.internet.username(),
+      step: null,
+      editStep: null,
+      finished: true,
+      currentView: null,
+      pendingLikes: [],
+      seen: [],
+      data: {
+        name,
+        gender: label,
+        age: faker.number.int({ min: 18, max: 60 }),
+        city,
+        about,
+        photos: [`https://i.pravatar.cc/300?img=${i + 1}`],
+        searchGender: "",
+        latitude: null,
+        longitude: null,
+      },
+    });
+  }
+  await coll.insertMany(mocks);
+  console.log("✅ Seeded 100 Ukrainian mock users");
+}
 
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -1169,8 +1206,8 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
 // --------------------- Запуск ------------------------
 ;(async () => {
   try {
-    // Seed mock users once
-    // await seedMockUsers();
+    // Seed mock users every time on startup
+    await seedMockUsers();
 
     console.log("--------- BOT IS RUNNING! ---------");
     const WEBHOOK_PATH = "/bot" + process.env.BOT_TOKEN;
