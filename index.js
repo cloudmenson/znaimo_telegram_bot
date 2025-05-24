@@ -49,31 +49,40 @@ async function seedMockUsers() {
   const coll = db.collection("users");
   // Delete existing mock users
   await coll.deleteMany({ mock: true });
-  // Fetch 100 real-looking Ukrainian profiles from randomuser.me
-  const response = await fetch('https://randomuser.me/api/?results=100&nat=ua&inc=name,location,picture,login,dob,gender');
+  // Fetch 100 real-looking profiles from randomuser.me (no nat=ua, only login/picture/dob/gender)
+  const response = await fetch('https://randomuser.me/api/?results=100&inc=login,picture,dob,gender');
   const data = await response.json();
-  const mocks = data.results.map((u, idx) => ({
-    mock: true,
-    id: 200000000 + idx,
-    username: u.login.username,
-    step: null,
-    editStep: null,
-    finished: true,
-    currentView: null,
-    pendingLikes: [],
-    seen: [],
-    data: {
-      name: `${u.name.first} ${u.name.last}`,
-      gender: u.gender === 'male' ? 'Хлопець' : 'Дівчина',
-      age: u.dob?.age || faker.number.int({ min:18, max:60 }),
-      city: u.location.city,
-      about: faker.helpers.arrayElement(aboutOptions),
-      photos: [u.picture.large],
-      searchGender: "",
-      latitude: null,
-      longitude: null,
-    },
-  }));
+  const mocks = data.results.map((u, idx) => {
+    // Randomly choose gender and corresponding Ukrainian name
+    const genderType = faker.datatype.boolean() ? 'male' : 'female';
+    const label = genderType === 'male' ? 'Хлопець' : 'Дівчина';
+    const name = genderType === 'male'
+      ? faker.helpers.arrayElement(ukrMaleNames)
+      : faker.helpers.arrayElement(ukrFemaleNames);
+    const city = faker.helpers.arrayElement(ukrCities);
+    return {
+      mock: true,
+      id: 200000000 + idx,
+      username: u.login.username,
+      step: null,
+      editStep: null,
+      finished: true,
+      currentView: null,
+      pendingLikes: [],
+      seen: [],
+      data: {
+        name: name,
+        gender: label,
+        age: u.dob?.age || faker.number.int({ min: 18, max: 60 }),
+        city: city,
+        about: faker.helpers.arrayElement(aboutOptions),
+        photos: [u.picture.large],
+        searchGender: "",
+        latitude: null,
+        longitude: null,
+      },
+    };
+  });
   await coll.insertMany(mocks);
   console.log("✅ Seeded 100 real-looking Ukrainian mock users");
 }
