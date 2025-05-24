@@ -200,6 +200,9 @@ bot.start(async (ctx) => {
   if (existing) {
     return ctx.reply('У вас вже є анкета.', mainMenu);
   }
+  // Зберігаємо id реферера, якщо є startPayload
+  const referrerId = ctx.startPayload ? parseInt(ctx.startPayload) : null;
+
   // 1) Індикатор “typing…”
   await ctx.sendChatAction("typing");
   // 2) Персональне вітання
@@ -219,6 +222,29 @@ bot.start(async (ctx) => {
   // 3) Ще один “typing…” перед наступним кроком
   await ctx.sendChatAction("typing");
   // 4) Власне запит на створення анкети
+  // Створюємо нового користувача одразу з referrer/referrals
+  const id = ctx.from.id;
+  const user = {
+    ...startProfile,
+    id,
+    username: ctx.from.username || null,
+    referrer: referrerId || null,
+    referrals: [],
+  };
+  await saveUser(user);
+
+  // Якщо є реферер і це не сам користувач — додаємо id до його referrals
+  if (referrerId && referrerId !== ctx.from.id) {
+    const refUser = await loadUser(referrerId);
+    if (refUser) {
+      refUser.referrals = refUser.referrals || [];
+      if (!refUser.referrals.includes(ctx.from.id)) {
+        refUser.referrals.push(ctx.from.id);
+        await saveUser(refUser);
+      }
+    }
+  }
+
   await ctx.reply(
     "✍️ Давай створимо твою анкету.",
     Markup.inlineKeyboard([
@@ -1042,6 +1068,22 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
     const id = ctx.from.id;
     const otherId = user?.currentView;
 
+    // Ліміт лайків на день: перевірка тільки для дії like
+    if (action === "like") {
+      const today = new Date().toISOString().slice(0, 10);
+      if (!user.lastLikeDate || user.lastLikeDate !== today) {
+        user.lastLikeDate = today;
+        user.dailyLikes = 0;
+      }
+      const referralBonus = (user.referrals?.length || 0) * 5;
+      const maxLikes = 50 + referralBonus;
+      if (user.dailyLikes >= maxLikes) {
+        return ctx.reply(`🚫 Ви досягли денного ліміту лайків (${maxLikes}). Спробуйте завтра.`);
+      }
+      user.dailyLikes = (user.dailyLikes || 0) + 1;
+      await saveUser(user);
+    }
+
     // Load the liked/disliked user
     const likedUser = await loadUser(otherId);
     if (!likedUser.seen) likedUser.seen = [];
@@ -1325,8 +1367,22 @@ bot.command("referral", async (ctx) => {
   if (!user || !user.finished) {
     return ctx.reply("Спочатку створи анкету через /start.");
   }
-  // TODO: імплементувати логіку рефералів
-  await ctx.reply("🎁 Реферальна система поки в розробці.");
+  const link = `https://t.me/${ctx.botInfo.username}?start=${id}`;
+  const count = user.referrals ? user.referrals.length : 0;
+  const today = new Date().toISOString().slice(0, 10);
+  const referralBonus = count * 5;
+  const likesToday = user.lastLikeDate === today ? user.dailyLikes || 0 : 0;
+  const maxLikes = 50 + referralBonus;
+
+  await ctx.replyWithHTML(`🎁 <b>Реферальна система</b>
+
+📨 Ви запросили: <b>${count}</b> друзів
+🔗 Ваше посилання: <code>${link}</code>
+
+💝 Денний ліміт лайків: <b>${likesToday}/${maxLikes}</b>
+(50 базових + ${referralBonus} за запрошення)
+
+Додаткові лайки нараховуються, якщо запрошена вами людина створить анкету і лайкне хоча б 1 анкету.`);
 });
 
 // Преміум система
