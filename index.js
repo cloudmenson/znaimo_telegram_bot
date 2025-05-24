@@ -32,7 +32,7 @@ bot.catch((err, ctx) => {
 
 // Привітальне повідомлення для нових користувачіва
 bot.on("message", async (ctx, next) => {
-  // Пропустити команди, щоб не блокувати /start та інші
+  // Пропустити команди щоб не блокувати /start та інші
   if (ctx.message.text && ctx.message.text.startsWith("/")) {
     return next();
   }
@@ -195,6 +195,11 @@ async function checkPendingLikes(ctx, user) {
 }
 
 bot.start(async (ctx) => {
+  // 0) Check if finished user already exists
+  const existing = await loadUser(ctx.from.id);
+  if (existing && existing.finished) {
+    return ctx.reply('Вітаю з поверненням!', mainMenu);
+  }
   // 1) Індикатор “typing…”
   await ctx.sendChatAction("typing");
   // 2) Персональне вітання
@@ -228,6 +233,10 @@ bot.start(async (ctx) => {
 bot.action("create_profile", async (ctx) => {
   try {
     const id = ctx.from.id;
+    const existing = await loadUser(id);
+    if (existing && existing.finished) {
+      return ctx.reply('Ваша анкета вже створена.', mainMenu);
+    }
     // Повністю оновлюємо стан анкети
     const user = { ...startProfile, id, username: ctx.from.username || null };
     await saveUser(user);
