@@ -999,8 +999,10 @@ async function handleSearch(ctx, user, id, isInline = false) {
     // Sort by proximity if coordinates are available
     let candidates = filtered;
     if (user.data.latitude != null && user.data.longitude != null) {
-      candidates = filtered
-        .filter((u) => u.data.latitude != null && u.data.longitude != null)
+      const withCoords = filtered.filter(
+        (u) => u.data.latitude != null && u.data.longitude != null
+      );
+      const sortedCoords = withCoords
         .map((u) => ({
           user: u,
           distance: geolib.getDistance(
@@ -1010,6 +1012,10 @@ async function handleSearch(ctx, user, id, isInline = false) {
         }))
         .sort((a, b) => a.distance - b.distance)
         .map((item) => item.user);
+      const withoutCoords = filtered.filter(
+        (u) => u.data.latitude == null || u.data.longitude == null
+      );
+      candidates = [...sortedCoords, ...withoutCoords];
     }
     const other = candidates.length ? candidates[0] : null;
 
