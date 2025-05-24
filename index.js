@@ -1536,14 +1536,28 @@ bot.action("edit_blacklist", async (ctx) => {
     return ctx.reply("У тебе немає заблокованих користувачів.");
   }
 
-  let message = "🧾 <b>Заблоковані користувачі:</b>\n";
+  const buttons = [];
   for (let uid of blacklist) {
     const u = await loadUser(uid);
-    if (u) {
-      const name = u.data?.name || u.username || uid;
-      message += `• ${name} — /unblock_${uid}\n`;
-    }
+    const name = u?.data?.name || u?.username || `ID: ${uid}`;
+    buttons.push([Markup.button.callback(`🚫 ${name}`, `unblock_${uid}`)]);
   }
 
-  return ctx.replyWithHTML(message);
+  return ctx.reply(
+    "🧾 Обери кого розблокувати:",
+    Markup.inlineKeyboard(buttons)
+  );
+});
+
+bot.action(/^unblock_(\d+)$/, async (ctx) => {
+  const unblockId = parseInt(ctx.match[1]);
+  const id = ctx.from.id;
+  const user = await loadUser(id);
+
+  if (!user || !user.blacklist) return ctx.reply("Немає доступу до списку.");
+  user.blacklist = user.blacklist.filter((uid) => uid !== unblockId);
+  await saveUser(user);
+
+  await ctx.answerCbQuery("Користувача розблоковано.");
+  await ctx.editMessageText("Користувача розблоковано ✅");
 });
