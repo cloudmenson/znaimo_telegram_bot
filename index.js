@@ -1070,8 +1070,12 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
                 })),
               ]);
             } catch (err) {
-              if (err.description && err.description.includes("USER_IS_BLOCKED")) {
-                console.log("Користувач заблокував бота — sendMediaGroup пропущено.");
+              if (
+                (err.description && err.description.includes("bot was blocked by the user")) ||
+                (err.description && err.description.includes("USER_IS_BLOCKED"))
+              ) {
+                console.log("Користувач заблокував бота — пропускаємо анкету.");
+                return await handleSearch(ctx, user, id, isInline);
               } else {
                 throw err;
               }
@@ -1083,8 +1087,12 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
               `💞 У вас взаємний лайк з @${ctx.from.username || user.id}!`
             );
           } catch (err) {
-            if (err.description && err.description.includes("USER_IS_BLOCKED")) {
-              console.log("Користувач заблокував бота — sendMessage пропущено.");
+            if (
+              (err.description && err.description.includes("bot was blocked by the user")) ||
+              (err.description && err.description.includes("USER_IS_BLOCKED"))
+            ) {
+              console.log("Користувач заблокував бота — пропускаємо анкету.");
+              return await handleSearch(ctx, user, id, isInline);
             } else {
               throw err;
             }
@@ -1106,8 +1114,12 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
                 })),
               ]);
             } catch (err) {
-              if (err.description && err.description.includes("USER_IS_BLOCKED")) {
-                console.log("Користувач заблокував бота — sendMediaGroup пропущено.");
+              if (
+                (err.description && err.description.includes("bot was blocked by the user")) ||
+                (err.description && err.description.includes("USER_IS_BLOCKED"))
+              ) {
+                console.log("Користувач заблокував бота — пропускаємо анкету.");
+                return await handleSearch(ctx, user, id, isInline);
               } else {
                 throw err;
               }
@@ -1119,8 +1131,12 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
               `💞 У вас взаємний лайк з @${likedUser.username || likedUser.id}!`
             );
           } catch (err) {
-            if (err.description && err.description.includes("USER_IS_BLOCKED")) {
-              console.log("Користувач заблокував бота — sendMessage пропущено.");
+            if (
+              (err.description && err.description.includes("bot was blocked by the user")) ||
+              (err.description && err.description.includes("USER_IS_BLOCKED"))
+            ) {
+              console.log("Користувач заблокував бота — пропускаємо анкету.");
+              return await handleSearch(ctx, user, id, isInline);
             } else {
               throw err;
             }
@@ -1153,8 +1169,12 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
                   })),
                 ]);
               } catch (err) {
-                if (err.description && err.description.includes("USER_IS_BLOCKED")) {
-                  console.log("Користувач заблокував бота — sendMediaGroup пропущено.");
+                if (
+                  (err.description && err.description.includes("bot was blocked by the user")) ||
+                  (err.description && err.description.includes("USER_IS_BLOCKED"))
+                ) {
+                  console.log("Користувач заблокував бота — пропускаємо анкету.");
+                  return await handleSearch(ctx, user, id, isInline);
                 } else {
                   throw err;
                 }
@@ -1168,8 +1188,12 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
                 pendingMenu
               );
             } catch (err) {
-              if (err.description && err.description.includes("USER_IS_BLOCKED")) {
-                console.log("Користувач заблокував бота — sendMessage пропущено.");
+              if (
+                (err.description && err.description.includes("bot was blocked by the user")) ||
+                (err.description && err.description.includes("USER_IS_BLOCKED"))
+              ) {
+                console.log("Користувач заблокував бота — пропускаємо анкету.");
+                return await handleSearch(ctx, user, id, isInline);
               } else {
                 throw err;
               }
