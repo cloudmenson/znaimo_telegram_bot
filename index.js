@@ -11,43 +11,43 @@ const geolib = require("geolib");
 const geocoder = NodeGeocoder({ provider: "openstreetmap" });
 
 // Seed mock users if not already seeded (using mock flag)
-async function seedMockUsers() {
-  const db = await getDb();
-  const coll = db.collection("users");
-  // Check whether mocks have been seeded by a flag
-  const mockCount = await coll.countDocuments({ mock: true });
-  if (mockCount === 0) {
-    const mocks = [];
-    for (let i = 0; i < 100; i++) {
-      const genderType = faker.helpers.arrayElement(["male", "female"]);
-      const label = genderType === "male" ? "Хлопець" : "Дівчина";
-      mocks.push({
-        mock: true,
-        id: 200000000 + i,
-        username: faker.internet.username(),
-        step: null,
-        editStep: null,
-        finished: true,
-        currentView: null,
-        pendingLikes: [],
-        seen: [],
-        data: {
-          name: faker.person.firstName(genderType),
-          gender: label,
-          age: faker.number.int({ min: 18, max: 60 }),
-          city: faker.location.city(),
-          about: faker.lorem.sentences(2),
-          photos: [`https://i.pravatar.cc/300?img=${i + 1}`],
-          searchGender: "",
-          latitude: null,
-          longitude: null,
-        },
-      });
-    }
-    await coll.insertMany(mocks);
-    console.log("✅ Seeded 100 mock users");
-  }
-}
+// async function seedMockUsers() {
+//   const db = await getDb();
+//   const coll = db.collection("users");
+//   // Check whether mocks have been seeded by a flag
+//   const mockCount = await coll.countDocuments({ mock: true });
+//   if (mockCount === 0) {
+//     const mocks = [];
+//     for (let i = 0; i < 100; i++) {
+//       const genderType = faker.helpers.arrayElement(["male", "female"]);
+//       const label = genderType === "male" ? "Хлопець" : "Дівчина";
+//       mocks.push({
+//         mock: true,
+//         id: 200000000 + i,
+//         username: faker.internet.username(),
+//         step: null,
+//         editStep: null,
+//         finished: true,
+//         currentView: null,
+//         pendingLikes: [],
+//         seen: [],
+//         data: {
+//           name: faker.person.firstName(genderType),
+//           gender: label,
+//           age: faker.number.int({ min: 18, max: 60 }),
+//           city: faker.location.city(),
+//           about: faker.lorem.sentences(2),
+//           photos: [`https://i.pravatar.cc/300?img=${i + 1}`],
+//           searchGender: "",
+//           latitude: null,
+//           longitude: null,
+//         },
+//       });
+//     }
+//     await coll.insertMany(mocks);
+//     console.log("✅ Seeded 100 mock users");
+//   }
+// }
 
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -1170,7 +1170,7 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
 ;(async () => {
   try {
     // Seed mock users once
-    await seedMockUsers();
+    // await seedMockUsers();
 
     console.log("--------- BOT IS RUNNING! ---------");
     const WEBHOOK_PATH = "/bot" + process.env.BOT_TOKEN;
