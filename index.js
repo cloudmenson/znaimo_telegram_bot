@@ -949,13 +949,15 @@ async function handleSearch(ctx, user, id, isInline = false) {
 
     const seen = user.seen || [];
     const allUsers = await getAllUsers();
-    // Initial filter: exclude self, unfinished, seen, and currentView
+    // Initial filter: exclude self, unfinished, seen, currentView, and users without valid photo(s)
     let filtered = allUsers.filter(
       (u) =>
         u.id !== id &&
         u.finished &&
         !seen.includes(u.id) &&
-        u.id !== user.currentView
+        u.id !== user.currentView &&
+        Array.isArray(u.data.photos) &&
+        u.data.photos.some(Boolean)
     );
     // Apply gender filter if selected
     if (
