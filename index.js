@@ -656,6 +656,11 @@ bot.action(/^blacklist_confirm_(\d+)$/, async (ctx) => {
   if (!user || !user.finished)
     return ctx.reply("Помилка: не знайдено ваш профіль.");
 
+  // Дозволяємо додавання до чорного списку лише під час перегляду анкети в пошуку
+  if (user.lastAction !== 'search' || user.currentView !== blockedId) {
+    return ctx.reply("❗ Заблокувати можна лише під час перегляду анкети в пошуку.");
+  }
+
   user.blacklist = user.blacklist || [];
   if (!user.blacklist.includes(blockedId)) {
     user.blacklist.push(blockedId);
@@ -1500,6 +1505,7 @@ bot.command("blacklist", async (ctx) => {
     return ctx.reply("Спочатку створи анкету через /start.");
   }
 
+  // Дозволяємо чорний список лише якщо користувач у режимі пошуку анкет
   if (user.lastAction !== 'search') {
     return ctx.reply("❗ Команду /blacklist можна використовувати лише під час перегляду анкет.");
   }
