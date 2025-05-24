@@ -1066,10 +1066,19 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
     const id = ctx.from.id;
     const otherId = user?.currentView;
 
+    // Load the liked/disliked user
+    const likedUser = await loadUser(otherId);
+    // If the liked user is a mock, skip real messaging
+    if (likedUser && likedUser.mock) {
+      // Treat as a simple like: mark seen and show next profile
+      user.seen = [...(user.seen || []), otherId];
+      await saveUser(user);
+      return await handleSearch(ctx, user, id, isInline);
+    }
+
     user.seen = [...(user.seen || []), otherId];
     await saveUser(user);
 
-    const likedUser = await loadUser(otherId);
     if (likedUser) {
       if (action === "like") {
         if ((likedUser.seen || []).includes(id)) {
