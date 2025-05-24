@@ -14,12 +14,33 @@ async function loadUser(id) {
   return db.collection("users").findOne({ id });
 }
 
-async function saveUser(user) {
+async function saveUser(user, tryCount = 0) {
   const db = await getDb();
-  if (!user) return;
-  await db
-    .collection("users")
-    .updateOne({ id: user.id }, { $set: user }, { upsert: true });
+  if (!user || !user.id) throw new Error("User id is required");
+
+  // Initialize version for new users
+  if (typeof user.version !== "number") {
+    user.version = 1;
+  }
+
+  // Attempt to update the document only if version matches
+  const result = await db.collection("users").findOneAndUpdate(
+    { id: user.id, version: user.version },
+    { $set: { ...user, version: user.version + 1 } },
+    { upsert: true, returnDocument: "after" }
+  );
+
+  if (!result.value) {
+    // If version mismatch, retry up to 3 times
+    if (tryCount < 3) {
+      const latest = await db.collection("users").findOne({ id: user.id });
+      user = { ...latest, ...user, version: latest.version || 1 };
+      return saveUser(user, tryCount + 1);
+    }
+    throw new Error("User update conflict: too many attempts");
+  }
+
+  return result.value;
 }
 
 async function removeUser(id) {
