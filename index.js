@@ -1055,6 +1055,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
     if (!other) {
       user.currentView = null;
       user.disliked = [];
+      user.lastAction = 'search';
       await saveUser(user);
       if (isInline) {
         await ctx.editMessageText(
@@ -1068,6 +1069,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
     }
 
     user.currentView = other.id;
+    user.lastAction = 'search';
     await saveUser(user);
 
     const photos = other.data.photos;
@@ -1496,6 +1498,10 @@ bot.command("blacklist", async (ctx) => {
 
   if (!user || !user.finished) {
     return ctx.reply("Спочатку створи анкету через /start.");
+  }
+
+  if (user.lastAction !== 'search') {
+    return ctx.reply("❗ Команду /blacklist можна використовувати лише під час перегляду анкет.");
   }
 
   if (!user.currentView) {
