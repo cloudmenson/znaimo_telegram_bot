@@ -1131,13 +1131,6 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
 // --------------------- Запуск ------------------------
 ;(async () => {
   try {
-    // Remove all mock users from the database
-    const db = await getDb();
-    const usersColl = db.collection("users");
-    const deleteResult = await usersColl.deleteMany({ mock: true });
-    console.log(`🗑️ Deleted ${deleteResult.deletedCount} mock users`);
-
-
     console.log("--------- BOT IS RUNNING! ---------");
     const WEBHOOK_PATH = "/bot" + process.env.BOT_TOKEN;
     const WEBHOOK_URL = `https://${process.env.RENDER_EXTERNAL_HOSTNAME || "your-app-name.onrender.com"}${WEBHOOK_PATH}`;
