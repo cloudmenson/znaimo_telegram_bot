@@ -44,47 +44,84 @@ const aboutOptions = [
   "Ціную доброту та щирість у людях."
 ];
 
+// Use global fetch (Node 18+)
 async function seedMockUsers() {
   const db = await getDb();
   const coll = db.collection("users");
   // Delete existing mock users
   await coll.deleteMany({ mock: true });
-  // Fetch 100 real-looking profiles from randomuser.me (no nat=ua, only login/picture/dob/gender)
-  const response = await fetch('https://randomuser.me/api/?results=100&inc=login,picture,dob,gender');
-  const data = await response.json();
-  const mocks = data.results.map((u, idx) => {
-    // Randomly choose gender and corresponding Ukrainian name
-    const genderType = faker.datatype.boolean() ? 'male' : 'female';
-    const label = genderType === 'male' ? 'Хлопець' : 'Дівчина';
-    const name = genderType === 'male'
-      ? faker.helpers.arrayElement(ukrMaleNames)
-      : faker.helpers.arrayElement(ukrFemaleNames);
-    const city = faker.helpers.arrayElement(ukrCities);
-    return {
-      mock: true,
-      id: 200000000 + idx,
-      username: u.login.username,
-      step: null,
-      editStep: null,
-      finished: true,
-      currentView: null,
-      pendingLikes: [],
-      seen: [],
-      data: {
-        name: name,
-        gender: label,
-        age: u.dob?.age || faker.number.int({ min: 18, max: 60 }),
-        city: city,
-        about: faker.helpers.arrayElement(aboutOptions),
-        photos: [u.picture.large],
-        searchGender: "",
-        latitude: null,
-        longitude: null,
-      },
-    };
-  });
+
+  let mocks = [];
+  try {
+    // Try fetching real-looking profiles
+    const response = await fetch('https://randomuser.me/api/?results=100&inc=login,picture,dob,gender&noinfo');
+    const data = await response.json();
+    mocks = data.results.map((u, idx) => {
+      const genderType = faker.datatype.boolean() ? 'male' : 'female';
+      const label = genderType === 'male' ? 'Хлопець' : 'Дівчина';
+      const name = genderType === 'male'
+        ? faker.helpers.arrayElement(ukrMaleNames)
+        : faker.helpers.arrayElement(ukrFemaleNames);
+      const city = faker.helpers.arrayElement(ukrCities);
+      return {
+        mock: true,
+        id: 200000000 + idx,
+        username: u.login.username,
+        step: null,
+        editStep: null,
+        finished: true,
+        currentView: null,
+        pendingLikes: [],
+        seen: [],
+        data: {
+          name,
+          gender: label,
+          age: u.dob?.age || faker.number.int({ min: 18, max: 60 }),
+          city,
+          about: faker.helpers.arrayElement(aboutOptions),
+          photos: [u.picture.large],
+          searchGender: "",
+          latitude: null,
+          longitude: null,
+        },
+      };
+    });
+  } catch (fetchError) {
+    console.error('Fetch randomuser failed, falling back to Faker mocks:', fetchError);
+    // Generate 100 Faker-based mocks
+    for (let i = 0; i < 100; i++) {
+      const genderType = faker.datatype.boolean() ? 'male' : 'female';
+      const label = genderType === 'male' ? 'Хлопець' : 'Дівчина';
+      const name = genderType === 'male'
+        ? faker.helpers.arrayElement(ukrMaleNames)
+        : faker.helpers.arrayElement(ukrFemaleNames);
+      const city = faker.helpers.arrayElement(ukrCities);
+      mocks.push({
+        mock: true,
+        id: 200000000 + i,
+        username: faker.internet.username(),
+        step: null,
+        editStep: null,
+        finished: true,
+        currentView: null,
+        pendingLikes: [],
+        seen: [],
+        data: {
+          name,
+          gender: label,
+          age: faker.number.int({ min: 18, max: 60 }),
+          city,
+          about: faker.helpers.arrayElement(aboutOptions),
+          photos: [`https://i.pravatar.cc/300?img=${i + 1}`],
+          searchGender: "",
+          latitude: null,
+          longitude: null,
+        },
+      });
+    }
+  }
   await coll.insertMany(mocks);
-  console.log("✅ Seeded 100 real-looking Ukrainian mock users");
+  console.log(`✅ Seeded ${mocks.length} mock users`);
 }
 
 const app = express();
