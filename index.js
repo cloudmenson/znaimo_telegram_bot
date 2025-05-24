@@ -60,7 +60,7 @@ bot.on("message", async (ctx, next) => {
 
 // Основні меню як звичайна клавіатура
 const mainMenu = Markup.keyboard([
-  ["🔍 Дивитися анкети", "✏️ Редагувати профіль", "📝 Профіль"],
+  ["🔍 Анкети", "✏️ Редагувати", "📝 Профіль"],
 ])
   .resize()
   .oneTime(false);
@@ -312,7 +312,7 @@ bot.action("search", async (ctx) => {
   }
 });
 
-bot.hears("🔍 Дивитися анкети", async (ctx) => {
+bot.hears("🔍 Анкети", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
 
@@ -325,7 +325,7 @@ bot.hears("🔍 Дивитися анкети", async (ctx) => {
   await handleSearch(ctx, user, id, false);
 });
 
-bot.hears("✏️ Редагувати профіль", async (ctx) => {
+bot.hears("✏️ Редагувати", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
   if (!user || !user.finished) {
@@ -1138,6 +1138,7 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
     // Set bot commands and webhook
     await bot.telegram.setMyCommands([
       { command: "profile", description: "📝 Профіль" },
+      { command: "premium", description: "⭐️ Преміум" },
       { command: "referral", description: "🎁 Реферальна система" },
       { command: "privacy", description: "🔒 Політика приватності" },
       { command: "blacklist", description: "🚫 Додати в чорний список" },
@@ -1214,6 +1215,17 @@ bot.command("referral", async (ctx) => {
   }
   // TODO: імплементувати логіку рефералів
   await ctx.reply("🎁 Реферальна система поки в розробці.");
+});
+
+// Преміум система
+bot.command("premium", async (ctx) => {
+  const id = ctx.from.id;
+  const user = await loadUser(id);
+  if (!user || !user.finished) {
+    return ctx.reply("Спочатку створи анкету через /start.");
+  }
+  // TODO: імплементувати логіку рефералів
+  await ctx.reply("🎁 Преміум система поки в розробці.");
 });
 
 // Політика приватності
