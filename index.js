@@ -1056,43 +1056,75 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
           // Mutual like: send media group (profile) and notification to both
           // Для likedUser (otherId)
           if (user.data.photos && user.data.photos.length > 0) {
-            await ctx.telegram.sendMediaGroup(otherId, [
-              {
-                type: "photo",
-                media: user.data.photos[0],
-                caption: prettyProfile(user),
-                parse_mode: "HTML",
-              },
-              ...user.data.photos.slice(1).map((file_id) => ({
-                type: "photo",
-                media: file_id,
-              })),
-            ]);
+            try {
+              await ctx.telegram.sendMediaGroup(otherId, [
+                {
+                  type: "photo",
+                  media: user.data.photos[0],
+                  caption: prettyProfile(user),
+                  parse_mode: "HTML",
+                },
+                ...user.data.photos.slice(1).map((file_id) => ({
+                  type: "photo",
+                  media: file_id,
+                })),
+              ]);
+            } catch (err) {
+              if (err.description && err.description.includes("USER_IS_BLOCKED")) {
+                console.log("Користувач заблокував бота — sendMediaGroup пропущено.");
+              } else {
+                throw err;
+              }
+            }
           }
-          await ctx.telegram.sendMessage(
-            otherId,
-            `💞 У вас взаємний лайк з @${ctx.from.username || user.id}!`
-          );
+          try {
+            await ctx.telegram.sendMessage(
+              otherId,
+              `💞 У вас взаємний лайк з @${ctx.from.username || user.id}!`
+            );
+          } catch (err) {
+            if (err.description && err.description.includes("USER_IS_BLOCKED")) {
+              console.log("Користувач заблокував бота — sendMessage пропущено.");
+            } else {
+              throw err;
+            }
+          }
 
           // Для користувача, який лайкнув (current user)
           if (likedUser.data.photos && likedUser.data.photos.length > 0) {
-            await ctx.telegram.sendMediaGroup(id, [
-              {
-                type: "photo",
-                media: likedUser.data.photos[0],
-                caption: prettyProfile(likedUser),
-                parse_mode: "HTML",
-              },
-              ...likedUser.data.photos.slice(1).map((file_id) => ({
-                type: "photo",
-                media: file_id,
-              })),
-            ]);
+            try {
+              await ctx.telegram.sendMediaGroup(id, [
+                {
+                  type: "photo",
+                  media: likedUser.data.photos[0],
+                  caption: prettyProfile(likedUser),
+                  parse_mode: "HTML",
+                },
+                ...likedUser.data.photos.slice(1).map((file_id) => ({
+                  type: "photo",
+                  media: file_id,
+                })),
+              ]);
+            } catch (err) {
+              if (err.description && err.description.includes("USER_IS_BLOCKED")) {
+                console.log("Користувач заблокував бота — sendMediaGroup пропущено.");
+              } else {
+                throw err;
+              }
+            }
           }
-          await ctx.telegram.sendMessage(
-            id,
-            `💞 У вас взаємний лайк з @${likedUser.username || likedUser.id}!`
-          );
+          try {
+            await ctx.telegram.sendMessage(
+              id,
+              `💞 У вас взаємний лайк з @${likedUser.username || likedUser.id}!`
+            );
+          } catch (err) {
+            if (err.description && err.description.includes("USER_IS_BLOCKED")) {
+              console.log("Користувач заблокував бота — sendMessage пропущено.");
+            } else {
+              throw err;
+            }
+          }
           // Reset currentView after mutual like so profile doesn't reappear
           user.currentView = null;
           await saveUser(user);
@@ -1107,25 +1139,41 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
             // Негайне повідомлення користувачу, якому поставили лайк
             // Спочатку його профіль
             if (user.data.photos && user.data.photos.length > 0) {
-              await ctx.telegram.sendMediaGroup(likedUser.id, [
-                {
-                  type: "photo",
-                  media: user.data.photos[0],
-                  caption: prettyProfile(user),
-                  parse_mode: "HTML",
-                },
-                ...user.data.photos.slice(1).map((file_id) => ({
-                  type: "photo",
-                  media: file_id,
-                })),
-              ]);
+              try {
+                await ctx.telegram.sendMediaGroup(likedUser.id, [
+                  {
+                    type: "photo",
+                    media: user.data.photos[0],
+                    caption: prettyProfile(user),
+                    parse_mode: "HTML",
+                  },
+                  ...user.data.photos.slice(1).map((file_id) => ({
+                    type: "photo",
+                    media: file_id,
+                  })),
+                ]);
+              } catch (err) {
+                if (err.description && err.description.includes("USER_IS_BLOCKED")) {
+                  console.log("Користувач заблокував бота — sendMediaGroup пропущено.");
+                } else {
+                  throw err;
+                }
+              }
             }
             // Потім текст з кнопками pendingMenu
-            await ctx.telegram.sendMessage(
-              likedUser.id,
-              "💞 Вам хтось поставив лайк!",
-              pendingMenu
-            );
+            try {
+              await ctx.telegram.sendMessage(
+                likedUser.id,
+                "💞 Вам хтось поставив лайк!",
+                pendingMenu
+              );
+            } catch (err) {
+              if (err.description && err.description.includes("USER_IS_BLOCKED")) {
+                console.log("Користувач заблокував бота — sendMessage пропущено.");
+              } else {
+                throw err;
+              }
+            }
           }
         }
       }
