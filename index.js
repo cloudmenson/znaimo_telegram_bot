@@ -2,14 +2,18 @@ const express = require("express");
 const { Telegraf, Markup } = require("telegraf");
 require("dotenv").config();
 
-const { getDb, loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
+const {
+  getDb,
+  loadUser,
+  saveUser,
+  removeUser,
+  getAllUsers,
+} = require("./mongo");
 
 const NodeGeocoder = require("node-geocoder");
 const geolib = require("geolib");
 // Configure geocoder to use OpenStreetMap
 const geocoder = NodeGeocoder({ provider: "openstreetmap" });
-
-
 
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -59,9 +63,7 @@ bot.on("message", async (ctx, next) => {
 });
 
 // Основні меню як звичайна клавіатура
-const mainMenu = Markup.keyboard([
-  ["🔍 Анкети", "✏️ Редагувати", "📝 Профіль"],
-])
+const mainMenu = Markup.keyboard([["🔍 Анкети", "✏️ Редагувати", "📝 Профіль"]])
   .resize()
   .oneTime(false);
 // Відображення власного профілю через клавіатуру
@@ -198,7 +200,7 @@ bot.start(async (ctx) => {
   // 0) Check if user already exists in DB
   const existing = await loadUser(ctx.from.id);
   if (existing) {
-    return ctx.reply('У вас вже є анкета.', mainMenu);
+    return ctx.reply("У вас вже є анкета.", mainMenu);
   }
   // Зберігаємо id реферера, якщо є startPayload
   const referrerId = ctx.startPayload ? parseInt(ctx.startPayload) : null;
@@ -261,7 +263,7 @@ bot.action("create_profile", async (ctx) => {
     const id = ctx.from.id;
     const existing = await loadUser(id);
     if (existing && existing.finished) {
-      return ctx.reply('Ваша анкета вже створена.', mainMenu);
+      return ctx.reply("Ваша анкета вже створена.", mainMenu);
     }
     // Повністю оновлюємо стан анкети
     const user = { ...startProfile, id, username: ctx.from.username || null };
@@ -1078,7 +1080,9 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
       const referralBonus = (user.referrals?.length || 0) * 5;
       const maxLikes = 50 + referralBonus;
       if (user.dailyLikes >= maxLikes) {
-        return ctx.reply(`🚫 Ви досягли денного ліміту лайків (${maxLikes}). Спробуйте завтра.`);
+        return ctx.reply(
+          `🚫 Ви досягли денного ліміту лайків (${maxLikes}). Спробуйте завтра.`
+        );
       }
       user.dailyLikes = (user.dailyLikes || 0) + 1;
       await saveUser(user);
@@ -1127,7 +1131,8 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
               ]);
             } catch (err) {
               if (
-                (err.description && err.description.includes("bot was blocked by the user")) ||
+                (err.description &&
+                  err.description.includes("bot was blocked by the user")) ||
                 (err.description && err.description.includes("USER_IS_BLOCKED"))
               ) {
                 console.log("Користувач заблокував бота — пропускаємо анкету.");
@@ -1144,7 +1149,8 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
             );
           } catch (err) {
             if (
-              (err.description && err.description.includes("bot was blocked by the user")) ||
+              (err.description &&
+                err.description.includes("bot was blocked by the user")) ||
               (err.description && err.description.includes("USER_IS_BLOCKED"))
             ) {
               console.log("Користувач заблокував бота — пропускаємо анкету.");
@@ -1171,7 +1177,8 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
               ]);
             } catch (err) {
               if (
-                (err.description && err.description.includes("bot was blocked by the user")) ||
+                (err.description &&
+                  err.description.includes("bot was blocked by the user")) ||
                 (err.description && err.description.includes("USER_IS_BLOCKED"))
               ) {
                 console.log("Користувач заблокував бота — пропускаємо анкету.");
@@ -1188,7 +1195,8 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
             );
           } catch (err) {
             if (
-              (err.description && err.description.includes("bot was blocked by the user")) ||
+              (err.description &&
+                err.description.includes("bot was blocked by the user")) ||
               (err.description && err.description.includes("USER_IS_BLOCKED"))
             ) {
               console.log("Користувач заблокував бота — пропускаємо анкету.");
@@ -1236,10 +1244,14 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
                 ]);
               } catch (err) {
                 if (
-                  (err.description && err.description.includes("bot was blocked by the user")) ||
-                  (err.description && err.description.includes("USER_IS_BLOCKED"))
+                  (err.description &&
+                    err.description.includes("bot was blocked by the user")) ||
+                  (err.description &&
+                    err.description.includes("USER_IS_BLOCKED"))
                 ) {
-                  console.log("Користувач заблокував бота — пропускаємо анкету.");
+                  console.log(
+                    "Користувач заблокував бота — пропускаємо анкету."
+                  );
                   return await handleSearch(ctx, user, id, isInline);
                 } else {
                   throw err;
@@ -1255,7 +1267,8 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
               );
             } catch (err) {
               if (
-                (err.description && err.description.includes("bot was blocked by the user")) ||
+                (err.description &&
+                  err.description.includes("bot was blocked by the user")) ||
                 (err.description && err.description.includes("USER_IS_BLOCKED"))
               ) {
                 console.log("Користувач заблокував бота — пропускаємо анкету.");
@@ -1283,11 +1296,13 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
 }
 
 // --------------------- Запуск ------------------------
-;(async () => {
+(async () => {
   try {
     console.log("--------- BOT IS RUNNING! ---------");
     const WEBHOOK_PATH = "/bot" + process.env.BOT_TOKEN;
-    const WEBHOOK_URL = `https://${process.env.RENDER_EXTERNAL_HOSTNAME || "your-app-name.onrender.com"}${WEBHOOK_PATH}`;
+    const WEBHOOK_URL = `https://${
+      process.env.RENDER_EXTERNAL_HOSTNAME || "your-app-name.onrender.com"
+    }${WEBHOOK_PATH}`;
 
     // Set bot commands and webhook
     await bot.telegram.setMyCommands([
@@ -1376,13 +1391,15 @@ bot.command("referral", async (ctx) => {
 
   await ctx.replyWithHTML(`🎁 <b>Реферальна система</b>
 
-📨 Ви запросили: <b>${count}</b> друзів
-🔗 Ваше посилання: <code>${link}</code>
+📨 <b>Запрошено друзів:</b> <b>${count}</b>
 
-💝 Денний ліміт лайків: <b>${likesToday}/${maxLikes}</b>
-(50 базових + ${referralBonus} за запрошення)
+🔗 <b>Твоє посилання для запрошень:</b>
+<code>https://t.me/${ctx.botInfo.username}?start=${id}</code>
 
-Додаткові лайки нараховуються, якщо запрошена вами людина створить анкету і лайкне хоча б 1 анкету.`);
+❤️ <b>Денний ліміт лайків:</b> <b>${likesToday}/${maxLikes}</b>
+(🧩 <i>50 базових</i> + 💎 <i>${referralBonus} за запрошених</i>)
+
+📌 <i>Додаткові лайки нараховуються, якщо запрошена людина створить анкету і лайкне хоча б 1 анкету.</i>`);
 });
 
 // Преміум система
