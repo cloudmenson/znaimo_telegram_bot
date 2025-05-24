@@ -668,7 +668,12 @@ bot.action(/^blacklist_confirm_(\d+)$/, async (ctx) => {
 });
 
 bot.action("blacklist_cancel", async (ctx) => {
+  const id = ctx.from.id;
+  const user = await loadUser(id);
   await ctx.reply("Дію скасовано.");
+  if (user && user.currentView) {
+    await handleSearch(ctx, user, id, false);
+  }
 });
 
 // Обробка повідомлень (тільки для введення тексту/фото/етапи)
@@ -1465,7 +1470,6 @@ bot.command("privacy", async (ctx) => {
 <b>4. Використання даних</b>
 - Створення, показ та пошук анкет
 - Сповіщення про взаємні лайки
-- Анонімна статистика для покращення бота
 
 <b>5. Зберігання та захист</b>
 - Захищені сервери з резервним копіюванням
@@ -1480,7 +1484,7 @@ bot.command("privacy", async (ctx) => {
 Ми можемо оновлювати цю політику; зміни будуть оголошені через бота.
 
 <b>8. Контакти</b>
-Питання/зауваження: support@znaimo.bot
+Питання/зауваження: znaimo.bot@gmail.com
   `);
 });
 
