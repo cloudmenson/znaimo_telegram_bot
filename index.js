@@ -120,6 +120,7 @@ const editProfileMenu = Markup.inlineKeyboard([
   [Markup.button.callback("📝 Опис", "edit_about")],
   [Markup.button.callback("🔎 Пошук статі", "edit_searchGender")],
   [Markup.button.callback("🤳 Фото", "edit_photos")],
+  [Markup.button.callback("🚫 Чорний список", "edit_blacklist")],
 ]);
 
 const startProfile = {
@@ -1498,22 +1499,7 @@ bot.command("blacklist", async (ctx) => {
   }
 
   if (!user.currentView) {
-    // Перегляд чорного списку
-    const blacklist = user.blacklist || [];
-    if (!blacklist.length) {
-      return ctx.reply("У тебе немає заблокованих користувачів.");
-    }
-
-    let message = "🧾 <b>Заблоковані користувачі:</b>\n";
-    for (let uid of blacklist) {
-      const u = await loadUser(uid);
-      if (u) {
-        const name = u.data?.name || u.username || uid;
-        message += `• ${name} — /unblock_${uid}\n`;
-      }
-    }
-
-    return ctx.replyWithHTML(message);
+    return ctx.reply("Цю дію можна виконати лише під час перегляду анкети.");
   }
 
   const otherId = user.currentView;
@@ -1535,4 +1521,29 @@ bot.command("language", async (ctx) => {
   }
   // TODO: імплементувати переклади
   await ctx.reply("🌐 Майбутні мови: 🇵🇱, 🇬🇧 — у розробці.");
+});
+
+bot.action("edit_blacklist", async (ctx) => {
+  const id = ctx.from.id;
+  const user = await loadUser(id);
+
+  if (!user || !user.finished) {
+    return ctx.answerCbQuery("Спочатку створи анкету через /start.");
+  }
+
+  const blacklist = user.blacklist || [];
+  if (!blacklist.length) {
+    return ctx.reply("У тебе немає заблокованих користувачів.");
+  }
+
+  let message = "🧾 <b>Заблоковані користувачі:</b>\n";
+  for (let uid of blacklist) {
+    const u = await loadUser(uid);
+    if (u) {
+      const name = u.data?.name || u.username || uid;
+      message += `• ${name} — /unblock_${uid}\n`;
+    }
+  }
+
+  return ctx.replyWithHTML(message);
 });
