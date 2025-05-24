@@ -4,6 +4,11 @@ require("dotenv").config();
 
 const { loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
 
+const NodeGeocoder = require('node-geocoder');
+const geolib = require('geolib');
+// Configure geocoder to use OpenStreetMap
+const geocoder = NodeGeocoder({ provider: 'openstreetmap' });
+
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
@@ -124,6 +129,8 @@ const startProfile = {
     about: "",
     photos: [],
     searchGender: "", // preferred gender to search
+    latitude: null,
+    longitude: null,
   },
   seen: [],
   finished: false,
@@ -672,8 +679,18 @@ bot.on("message", async (ctx, next) => {
               return ctx.reply("Введи коректну назву міста:");
             }
             user.data.city = ctx.message.text.trim();
-            user.editStep = null;
+            // Geocode city to coordinates
+            try {
+              const geoRes = await geocoder.geocode(user.data.city);
+              if (geoRes && geoRes.length) {
+                user.data.latitude = geoRes[0].latitude;
+                user.data.longitude = geoRes[0].longitude;
+              }
+            } catch (e) {
+              console.error('GEOCODE ERROR:', e);
+            }
             await saveUser(user);
+            user.editStep = null;
             await ctx.reply("Місто змінено ✅", mainMenu);
             break;
           case "edit_about":
@@ -787,8 +804,18 @@ bot.on("message", async (ctx, next) => {
             return ctx.reply("Введи коректну назву міста:");
           }
           user.data.city = ctx.message.text.trim();
-          user.step = "about";
+          // Geocode city to coordinates
+          try {
+            const geoRes = await geocoder.geocode(user.data.city);
+            if (geoRes && geoRes.length) {
+              user.data.latitude = geoRes[0].latitude;
+              user.data.longitude = geoRes[0].longitude;
+            }
+          } catch (e) {
+            console.error('GEOCODE ERROR:', e);
+          }
           await saveUser(user);
+          user.step = "about";
           await ctx.reply("📝 Розкажи про себе коротко (до 200 символів):");
           break;
         case "about":
@@ -908,7 +935,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
 
     const seen = user.seen || [];
     const allUsers = await getAllUsers();
-    // Фільтрація за статтю для пошуку
+    // Initial filter: exclude self, unfinished, seen, and currentView
     let filtered = allUsers.filter(
       (u) =>
         u.id !== id &&
@@ -916,27 +943,36 @@ async function handleSearch(ctx, user, id, isInline = false) {
         !seen.includes(u.id) &&
         u.id !== user.currentView
     );
-    // Застосувати фільтр по статі пошуку, якщо вибрано
+    // Apply gender filter if selected
     if (
-      user.data &&
       user.data.searchGender &&
       user.data.searchGender !== "" &&
       user.data.searchGender !== "Будь-хто"
     ) {
-      // "Чоловіки" => u.data.gender === "Хлопець"
-      // "Жінки" => u.data.gender === "Дівчина"
-      if (user.data.searchGender === "Хлопці") {
-        filtered = filtered.filter(
-          (u) => u.data && u.data.gender === "Хлопець"
-        );
-      } else if (user.data.searchGender === "Дівчата") {
-        filtered = filtered.filter(
-          (u) => u.data && u.data.gender === "Дівчина"
-        );
-      }
+      const target = user.data.searchGender === "Хлопці" ? "Хлопець" : "Дівчина";
+      filtered = filtered.filter((u) => u.data.gender === target);
     }
+    // Sort by proximity if coordinates are available
+    let candidates = filtered;
+    if (
+      user.data.latitude != null &&
+      user.data.longitude != null
+    ) {
+      candidates = filtered
+        .filter((u) => u.data.latitude != null && u.data.longitude != null)
+        .map((u) => ({
+          user: u,
+          distance: geolib.getDistance(
+            { latitude: user.data.latitude, longitude: user.data.longitude },
+            { latitude: u.data.latitude, longitude: u.data.longitude }
+          ),
+        }))
+        .sort((a, b) => a.distance - b.distance)
+        .map((item) => item.user);
+    }
+    const other = candidates.length ? candidates[0] : null;
 
-    if (filtered.length === 0) {
+    if (!other) {
       user.currentView = null; // <--- reset
       await saveUser(user);
       if (isInline) {
@@ -949,8 +985,6 @@ async function handleSearch(ctx, user, id, isInline = false) {
       }
       return;
     }
-
-    const other = filtered[Math.floor(Math.random() * filtered.length)];
 
     user.currentView = other.id;
     await saveUser(user);
