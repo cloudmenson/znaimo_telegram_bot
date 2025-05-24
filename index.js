@@ -2,13 +2,7 @@ const express = require("express");
 const { Telegraf, Markup } = require("telegraf");
 require("dotenv").config();
 
-const {
-  getDb,
-  loadUser,
-  saveUser,
-  removeUser,
-  getAllUsers,
-} = require("./mongo");
+const { loadUser, saveUser, getAllUsers } = require("./mongo");
 
 const NodeGeocoder = require("node-geocoder");
 const geolib = require("geolib");
