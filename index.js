@@ -865,13 +865,8 @@ bot.on("message", async (ctx, next) => {
               .resize()
               .oneTime(true)
           );
-          break;
         case "searchGender":
-          if (
-            !["Хлопці", "Дівчата", "Будь-хто", "Відмінити"].includes(
-              ctx.message.text
-            )
-          ) {
+          if (!["Хлопці", "Дівчата", "Будь-хто"].includes(ctx.message.text)) {
             return ctx.reply(
               "🔎 Будь ласка, обери стать з клавіатури:",
               Markup.keyboard([["Хлопці", "Дівчата", "Будь-хто"]])
