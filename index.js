@@ -662,6 +662,11 @@ bot.action(/^blacklist_confirm_(\d+)$/, async (ctx) => {
   }
 
   user.blacklist = user.blacklist || [];
+
+  if (user.blacklist.length >= 50) {
+    return ctx.reply("🚫 Ти досяг ліміту в 50 заблокованих користувачів.");
+  }
+
   if (!user.blacklist.includes(blockedId)) {
     user.blacklist.push(blockedId);
     await saveUser(user);
@@ -1118,7 +1123,7 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
       const maxLikes = 50 + referralBonus;
       if (user.dailyLikes >= maxLikes) {
         return ctx.reply(
-          `🚫 Ви досягли денного ліміту лайків (${maxLikes}). Спробуйте завтра.`
+          `🚫 Ви досягли денного ліміту лайків. Спробуйте пізніше.`
         );
       }
       user.dailyLikes = (user.dailyLikes || 0) + 1;
