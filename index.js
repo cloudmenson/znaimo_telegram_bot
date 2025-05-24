@@ -10,12 +10,13 @@ const geolib = require("geolib");
 // Configure geocoder to use OpenStreetMap
 const geocoder = NodeGeocoder({ provider: "openstreetmap" });
 
-// Seed mock users if collection is empty
+// Seed mock users if no mock users exist (id >= 200000000)
 async function seedMockUsers() {
   const db = await getDb();
   const coll = db.collection("users");
-  const count = await coll.countDocuments();
-  if (count === 0) {
+  // Check existing mock users by our ID range
+  const mockCount = await coll.countDocuments({ id: { $gte: 200000000 } });
+  if (mockCount === 0) {
     const mocks = [];
     for (let i = 0; i < 100; i++) {
       const genderType = faker.helpers.arrayElement(["male", "female"]);
@@ -44,6 +45,8 @@ async function seedMockUsers() {
     }
     await coll.insertMany(mocks);
     console.log("✅ Seeded 100 mock users");
+  } else {
+    console.log(`✅ ${mockCount} mock users already present, skipping seed.`);
   }
 }
 
