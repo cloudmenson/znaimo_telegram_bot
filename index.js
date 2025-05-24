@@ -816,7 +816,10 @@ bot.on("message", async (ctx, next) => {
           }
           await saveUser(user);
           user.step = "about";
-          await ctx.reply("📝 Розкажи про себе коротко (до 200 символів):");
+          await ctx.reply(
+            "📝 Розкажи про себе коротко (до 200 символів):",
+            Markup.removeKeyboard()
+          );
           break;
         case "about":
           if (
