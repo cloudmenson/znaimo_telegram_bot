@@ -36,7 +36,7 @@ async function seedMockUsers() {
           gender: label,
           age: faker.number.int({ min: 18, max: 60 }),
           city: faker.location.city(),
-          about: faker.lorem.sentences({ count: 2 }),
+          about: faker.lorem.sentences(2),
           photos: [`https://i.pravatar.cc/300?img=${i + 1}`],
           searchGender: "",
           latitude: null,
