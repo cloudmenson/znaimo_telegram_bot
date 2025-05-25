@@ -18,9 +18,33 @@ const geocoder = NodeGeocoder({ provider: "openstreetmap" });
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// Глобальний middleware для показу “typing” перед кожним повідомленням
+// Глобальний middleware для показу “typing”, крім пошуку/лайків/дизлайків/профілю
 bot.use(async (ctx, next) => {
   try {
+    const skipTyping = [
+      "🔍 Анкети",
+      "💝",
+      "❌",
+      "📝 Профіль",
+      "/find",
+      "/profile",
+      "/blacklist",
+    ];
+    if (
+      ctx.updateType === "message" &&
+      ctx.message?.text &&
+      skipTyping.includes(ctx.message.text)
+    ) {
+      return next();
+    }
+
+    if (
+      ctx.updateType === "callback_query" &&
+      ["like", "dislike", "search", "profile"].includes(ctx.callbackQuery?.data)
+    ) {
+      return next();
+    }
+
     await ctx.sendChatAction("typing");
   } catch (e) {
     console.error("ChatAction ERROR", e);
