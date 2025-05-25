@@ -54,9 +54,7 @@ bot.on("message", async (ctx, next) => {
 });
 
 // Основні меню як звичайна клавіатура (емодзі без тексту)
-const mainMenu = Markup.keyboard([
-  ["🔍", "✏️", "⚙️", "❓"]
-])
+const mainMenu = Markup.keyboard([["🔍", "✏️", "⚙️", "❓"]])
   .resize()
   .oneTime(false);
 // Відображення власного профілю через клавіатуру
@@ -135,6 +133,7 @@ const startProfile = {
   currentView: null,
   pendingLikes: [],
   superLikesUsed: [],
+  hasUsedBackInSearch: false,
 };
 
 function prettyProfile(user) {
@@ -520,7 +519,9 @@ bot.hears("💥", async (ctx) => {
   }
 
   if (!user.superLikeExplained) {
-    await ctx.reply("💥 Супер-лайк — це один потужний лайк на день, який гарантовано побачить інший користувач.");
+    await ctx.reply(
+      "💥 Супер-лайк — це один потужний лайк на день, який гарантовано побачить інший користувач."
+    );
     user.superLikeExplained = true;
     await saveUser(user);
   }
@@ -1131,6 +1132,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
     user.lastView = user.currentView || null;
     user.currentView = other.id;
     user.lastAction = "search";
+    user.hasUsedBackInSearch = false;
     await saveUser(user);
 
     const photos = other.data.photos;
@@ -1669,7 +1671,7 @@ bot.hears("↩", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
 
-  if (!user || !user.finished || !user.lastView) {
+  if (!user || !user.finished || !user.lastView || user.hasUsedBackInSearch) {
     return ctx.reply("Немає попередньої анкети для перегляду.");
   }
 
@@ -1691,6 +1693,7 @@ bot.hears("↩", async (ctx) => {
 
   user.currentView = user.lastView;
   user.lastView = null;
+  user.hasUsedBackInSearch = true;
   await saveUser(user);
 
   const photos = prevUser.data.photos;
