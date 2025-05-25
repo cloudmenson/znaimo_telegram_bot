@@ -1093,7 +1093,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
       })),
     ]);
     // Use reply-keyboard for search mode
-    await ctx.reply("📋 Зробіть свій вибір:", searchMenu);
+    await ctx.reply("💝/❌ Зробіть свій вибір:", searchMenu);
   } catch (e) {
     console.error("handleSearch ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
