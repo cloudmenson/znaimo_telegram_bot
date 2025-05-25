@@ -16,6 +16,7 @@
     "node-geocoder": "4.4.1",
     "geolib": "3.3.4",
     "@faker-js/faker": "9.8.0",
-    "node-fetch": "3.3.2"
+    "node-fetch": "3.3.2",
+    "node-cron": "4.0.7"
   }
 }
