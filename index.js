@@ -1612,16 +1612,28 @@ bot.action(/^unblock_(\d+)$/, async (ctx) => {
   await ctx.editMessageText("Користувача розблоковано ✅");
 });
 
-// Кнопка "⬅️ Назад" для повернення до попередньої анкети
+// Кнопка "⬅️ Назад" для повернення до попередньої анкети (нова логіка)
 bot.hears("↩", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
+
   if (!user || !user.finished || !user.lastView) {
     return ctx.reply("Немає попередньої анкети для перегляду.");
   }
 
+  // Якщо останню анкету було лайкнуто — заборонити повертатись
+  if (user.seen?.includes(user.lastView)) {
+    user.lastView = null;
+    await saveUser(user);
+    return ctx.reply(
+      "❌ Ви вже поставили лайк на цю анкету. Назад повернутись не можна."
+    );
+  }
+
   const prevUser = await loadUser(user.lastView);
   if (!prevUser || !prevUser.data.photos || prevUser.data.photos.length === 0) {
+    user.lastView = null;
+    await saveUser(user);
     return ctx.reply("Попередню анкету не знайдено або вона видалена.");
   }
 
