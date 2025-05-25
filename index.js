@@ -54,11 +54,11 @@ bot.on("message", async (ctx, next) => {
 });
 
 // Основні меню як звичайна клавіатура
-const mainMenu = Markup.keyboard([["🔍 Анкети", "✏️ Змінити", "📝 Профіль"]])
+const mainMenu = Markup.keyboard([["🔍 Анкети", "✏️ Змінити", "⚙️ Профіль"]])
   .resize()
   .oneTime(false);
 // Відображення власного профілю через клавіатуру
-bot.hears("📝 Профіль", async (ctx) => {
+bot.hears("⚙️ Профіль", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
   // Якщо анкета незавершена
@@ -94,7 +94,7 @@ const pendingMenu = Markup.keyboard([["💝 Взаємно", "❌ Відхили
   .oneTime(false);
 
 // Меню для пошуку (reply-keyboard)
-const searchMenu = Markup.keyboard([["💝", "❌", "🔙", "⚙️"]])
+const searchMenu = Markup.keyboard([["💝", "❌", "↩", "⚙️ Профіль"]])
   .resize()
   .oneTime(false);
 
@@ -1346,7 +1346,7 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
 
     // Set bot commands and webhook
     await bot.telegram.setMyCommands([
-      { command: "profile", description: "📝 Профіль" },
+      { command: "profile", description: "⚙️ Профіль" },
       { command: "premium", description: "⭐️ Преміум" },
       { command: "referral", description: "🎁 Реферальна система" },
       { command: "privacy", description: "🔒 Політика приватності" },
@@ -1385,7 +1385,7 @@ cron.schedule("0 */12 * * *", async () => {
       await bot.telegram.sendMessage(
         user.id,
         `👋 Привіт! У нас нові анкети — перевір, хто тебе міг вже лайкнути!`,
-        Markup.keyboard([["🔍 Анкети", "📝 Профіль"]])
+        Markup.keyboard([["🔍 Анкети", "⚙️ Профіль"]])
           .resize()
           .oneTime(true)
       );
@@ -1423,7 +1423,7 @@ bot.hears("❌", async (ctx) => {
   await handleLikeDislike(ctx, user, "dislike");
 });
 
-bot.hears("📝 Профіль", async (ctx) => {
+bot.hears("⚙️ Профіль", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
   if (!user || !user.finished) {
@@ -1613,7 +1613,7 @@ bot.action(/^unblock_(\d+)$/, async (ctx) => {
 });
 
 // Кнопка "⬅️ Назад" для повернення до попередньої анкети
-bot.hears("🔙", async (ctx) => {
+bot.hears("↩", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
   if (!user || !user.finished || !user.lastView) {
