@@ -1116,6 +1116,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
       user.currentView = null;
       user.disliked = [];
       user.lastAction = "search";
+      user.hasUsedBackInSearch = false;
       await saveUser(user);
       if (isInline) {
         await ctx.editMessageText(
@@ -1509,7 +1510,6 @@ bot.command("referral", async (ctx) => {
   if (!user || !user.finished) {
     return ctx.reply("Спочатку створи анкету через /start.");
   }
-  const link = `https://t.me/${ctx.botInfo.username}?start=${id}`;
   const count = user.referrals ? user.referrals.length : 0;
   const today = new Date().toISOString().slice(0, 10);
   const referralBonus = count * 5;
