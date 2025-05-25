@@ -18,15 +18,6 @@ const geocoder = NodeGeocoder({ provider: "openstreetmap" });
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// Глобальний middleware для показу “typing” перед кожним повідомленням
-bot.use(async (ctx, next) => {
-  try {
-    await ctx.sendChatAction("typing");
-  } catch (e) {
-    console.error("ChatAction ERROR", e);
-  }
-  return next();
-});
 
 // Глобальний обробник помилок Telegraf
 bot.catch((err, ctx) => {
@@ -44,7 +35,7 @@ bot.on("message", async (ctx, next) => {
   const user = await loadUser(id);
   if (!user) {
     // Індикатор “бот друкує”
-    await ctx.sendChatAction("typing");
+    // await ctx.sendChatAction("typing");
 
     // Особисте звертання по імені
     await ctx.reply(
@@ -207,14 +198,14 @@ bot.start(async (ctx) => {
   const referrerId = ctx.startPayload ? parseInt(ctx.startPayload) : null;
 
   // 1) Індикатор “typing…”
-  await ctx.sendChatAction("typing");
+  // await ctx.sendChatAction("typing");
   // 2) Персональне вітання
   await ctx.reply(
     `👋 Привіт, ${ctx.from.first_name}! Ласкаво просимо до Znaimo!`
   );
 
   // Доповненне повідомлення після вітання
-  await ctx.sendChatAction("typing");
+  // await ctx.sendChatAction("typing");
   await ctx.reply(
     `Я допоможу тобі:
 • Створити власну анкету
@@ -223,7 +214,7 @@ bot.start(async (ctx) => {
   );
 
   // 3) Ще один “typing…” перед наступним кроком
-  await ctx.sendChatAction("typing");
+  // await ctx.sendChatAction("typing");
   // 4) Власне запит на створення анкети
   // Створюємо нового користувача одразу з referrer/referrals
   const id = ctx.from.id;
