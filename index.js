@@ -344,7 +344,7 @@ bot.action("search", async (ctx) => {
   }
 });
 
-bot.hears("🔍 Анкети", async (ctx) => {
+bot.hears("🔍", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
 
@@ -357,7 +357,7 @@ bot.hears("🔍 Анкети", async (ctx) => {
   await handleSearch(ctx, user, id, false);
 });
 
-bot.hears("✏️ Змінити", async (ctx) => {
+bot.hears("✏️", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
   if (!user || !user.finished) {
