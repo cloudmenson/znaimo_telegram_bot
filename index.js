@@ -18,33 +18,9 @@ const geocoder = NodeGeocoder({ provider: "openstreetmap" });
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// Глобальний middleware для показу “typing”, крім пошуку/лайків/дизлайків/профілю
+// Глобальний middleware для показу “typing” перед кожним повідомленням
 bot.use(async (ctx, next) => {
   try {
-    const skipTyping = [
-      "🔍 Анкети",
-      "💝",
-      "❌",
-      "📝 Профіль",
-      "/find",
-      "/profile",
-      "/blacklist",
-    ];
-    if (
-      ctx.updateType === "message" &&
-      ctx.message?.text &&
-      skipTyping.includes(ctx.message.text)
-    ) {
-      return next();
-    }
-
-    if (
-      ctx.updateType === "callback_query" &&
-      ["like", "dislike", "search", "profile"].includes(ctx.callbackQuery?.data)
-    ) {
-      return next();
-    }
-
     await ctx.sendChatAction("typing");
   } catch (e) {
     console.error("ChatAction ERROR", e);
@@ -1045,7 +1021,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
     const disliked = user.disliked || [];
     const [_, allUsers] = await Promise.all([
       Promise.resolve(user), // keep for symmetry, user is already loaded
-      getAllUsers()
+      getAllUsers(),
     ]);
     // Initial filter: exclude self, unfinished, seen, disliked, currentView, and users without valid photo(s)
     let filtered = allUsers.filter(
@@ -1163,7 +1139,7 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
     // Load both user and liked/disliked user in parallel
     const [_, likedUser] = await Promise.all([
       Promise.resolve(user), // user already loaded
-      loadUser(otherId)
+      loadUser(otherId),
     ]);
     if (!likedUser.seen) likedUser.seen = [];
     // If the liked user is a mock, skip real messaging
