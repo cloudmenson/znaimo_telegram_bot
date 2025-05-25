@@ -1,3 +1,6 @@
+const { loadUser } = require("../mongo");
+const { prettyProfile } = require("../handlers/search");
+
 function registerStartHandlers(bot) {
   bot.start(async (ctx) => {
     // 0) Check if user already exists in DB

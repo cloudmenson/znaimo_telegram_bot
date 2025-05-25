@@ -1,3 +1,6 @@
+const { loadUser } = require("../mongo");
+const { prettyProfile } = require("../handlers/search");
+
 function registerProfileHandlers(bot) {
   bot.command("profile", async (ctx) => {
     const id = ctx.from.id;
