@@ -94,7 +94,8 @@ bot.hears("📝 Профіль", async (ctx) => {
       .map((file_id) => ({ type: "photo", media: file_id })),
   ]);
   // Повертаємо меню дій
-  await ctx.reply("Обери дію:", mainMenu);
+  // await ctx.reply("Обери дію:", mainMenu);
+  await ctx.sendMessage("‎", mainMenu);
 });
 
 // Меню очікування лайків (reply-keyboard)
@@ -315,7 +316,8 @@ bot.command("profile", async (ctx) => {
       media: file_id,
     })),
   ]);
-  await ctx.reply("Обери дію:", mainMenu);
+  // await ctx.reply("Обери дію:", mainMenu);
+  await ctx.sendMessage("‎", mainMenu);
 });
 
 bot.command("edit", async (ctx) => {
@@ -451,7 +453,9 @@ bot.action("profile", async (ctx) => {
         media: file_id,
       })),
     ]);
-    await ctx.reply("Обери дію:", mainMenu);
+    // await ctx.reply("Обери дію:", mainMenu);
+    await ctx.sendMessage("‎", mainMenu);
+
     await ctx.answerCbQuery();
   } catch (e) {
     console.error("PROFILE ERROR:", e);
@@ -657,8 +661,10 @@ bot.action(/^blacklist_confirm_(\d+)$/, async (ctx) => {
     return ctx.reply("Помилка: не знайдено ваш профіль.");
 
   // Дозволяємо додавання до чорного списку лише під час перегляду анкети в пошуку
-  if (user.lastAction !== 'search' || user.currentView !== blockedId) {
-    return ctx.reply("❗ Заблокувати можна лише під час перегляду анкети в пошуку.");
+  if (user.lastAction !== "search" || user.currentView !== blockedId) {
+    return ctx.reply(
+      "❗ Заблокувати можна лише під час перегляду анкети в пошуку."
+    );
   }
 
   user.blacklist = user.blacklist || [];
@@ -743,8 +749,8 @@ bot.on("message", async (ctx, next) => {
           case "edit_age":
             {
               const age = parseInt(ctx.message.text, 10);
-              if (isNaN(age) || age < 16 || age > 99) {
-                return ctx.reply("Введи коректний вік (16-99):");
+              if (isNaN(age) || age < 18 || age > 99) {
+                return ctx.reply("Введи коректний вік (18-99):");
               }
               user.data.age = age;
               user.editStep = null;
@@ -854,8 +860,8 @@ bot.on("message", async (ctx, next) => {
           break;
         case "age": {
           const age = parseInt(ctx.message.text, 10);
-          if (isNaN(age) || age < 16 || age > 99) {
-            return ctx.reply("Введи коректний вік (16-99):");
+          if (isNaN(age) || age < 18 || age > 99) {
+            return ctx.reply("Введи коректний вік (18-99):");
           }
           user.data.age = age;
           user.step = "gender";
@@ -1065,7 +1071,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
     if (!other) {
       user.currentView = null;
       user.disliked = [];
-      user.lastAction = 'search';
+      user.lastAction = "search";
       await saveUser(user);
       if (isInline) {
         await ctx.editMessageText(
@@ -1079,7 +1085,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
     }
 
     user.currentView = other.id;
-    user.lastAction = 'search';
+    user.lastAction = "search";
     await saveUser(user);
 
     const photos = other.data.photos;
@@ -1096,7 +1102,8 @@ async function handleSearch(ctx, user, id, isInline = false) {
       })),
     ]);
     // Use reply-keyboard for search mode
-    await ctx.reply("📋 Зробіть свій вибір:", searchMenu);
+    // await ctx.reply("📋 Зробіть свій вибір:", searchMenu);
+    await ctx.sendMessage("‎", searchMenu);
   } catch (e) {
     console.error("handleSearch ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
@@ -1414,7 +1421,8 @@ bot.hears("📝 Профіль", async (ctx) => {
       media: file_id,
     })),
   ]);
-  await ctx.reply("Обери дію:", mainMenu);
+  // await ctx.reply("Обери дію:", mainMenu);
+  await ctx.sendMessage("‎", mainMenu);
 });
 
 // Реферальна система
@@ -1511,8 +1519,10 @@ bot.command("blacklist", async (ctx) => {
   }
 
   // Дозволяємо чорний список лише якщо користувач у режимі пошуку анкет
-  if (user.lastAction !== 'search') {
-    return ctx.reply("❗ Команду /blacklist можна використовувати лише під час перегляду анкет.");
+  if (user.lastAction !== "search") {
+    return ctx.reply(
+      "❗ Команду /blacklist можна використовувати лише під час перегляду анкет."
+    );
   }
 
   if (!user.currentView) {
