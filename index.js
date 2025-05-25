@@ -7,18 +7,22 @@ const { loadUser, saveUser } = require("./mongo");
 const NodeGeocoder = require("node-geocoder");
 const geocoder = NodeGeocoder({ provider: "openstreetmap" });
 
+const app = express();
+const bot = new Telegraf(process.env.BOT_TOKEN);
+
 const { handleLikeDislike } = require("./handlers/like");
 const { registerStartHandlers } = require("./handlers/start");
 const { registerPushNotifications } = require("./handlers/push");
 const { registerProfileHandlers } = require("./handlers/profile");
-const { handleSearch, checkPendingLikes, prettyProfile } = require("./handlers/search");
+const {
+  handleSearch,
+  checkPendingLikes,
+  prettyProfile,
+} = require("./handlers/search");
 
 registerStartHandlers(bot);
 registerProfileHandlers(bot);
 registerPushNotifications(bot);
-
-const app = express();
-const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // Глобальний обробник помилок Telegraf
 bot.catch((err, ctx) => {
