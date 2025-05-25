@@ -1,5 +1,24 @@
 const { loadUser } = require("../mongo");
-const { prettyProfile } = require("../handlers/search");
+
+const startProfile = {
+  step: "name",
+  editStep: null,
+  data: {
+    name: "",
+    gender: "",
+    age: "",
+    city: "",
+    about: "",
+    photos: [],
+    searchGender: "", // preferred gender to search
+    latitude: null,
+    longitude: null,
+  },
+  seen: [],
+  finished: false,
+  currentView: null,
+  pendingLikes: [],
+};
 
 function registerStartHandlers(bot) {
   bot.start(async (ctx) => {
