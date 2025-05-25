@@ -1019,7 +1019,10 @@ async function handleSearch(ctx, user, id, isInline = false) {
 
     const seen = user.seen || [];
     const disliked = user.disliked || [];
-    const allUsers = await getAllUsers();
+    const [_, allUsers] = await Promise.all([
+      Promise.resolve(user), // keep for symmetry, user is already loaded
+      getAllUsers()
+    ]);
     // Initial filter: exclude self, unfinished, seen, disliked, currentView, and users without valid photo(s)
     let filtered = allUsers.filter(
       (u) =>
@@ -1133,8 +1136,11 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
       await saveUser(user);
     }
 
-    // Load the liked/disliked user
-    const likedUser = await loadUser(otherId);
+    // Load both user and liked/disliked user in parallel
+    const [_, likedUser] = await Promise.all([
+      Promise.resolve(user), // user already loaded
+      loadUser(otherId)
+    ]);
     if (!likedUser.seen) likedUser.seen = [];
     // If the liked user is a mock, skip real messaging
     if (likedUser && likedUser.mock) {
@@ -1180,7 +1186,6 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
                   err.description.includes("bot was blocked by the user")) ||
                 (err.description && err.description.includes("USER_IS_BLOCKED"))
               ) {
-                console.log("Користувач заблокував бота — пропускаємо анкету.");
                 return await handleSearch(ctx, user, id, isInline);
               } else {
                 throw err;
@@ -1198,7 +1203,6 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
                 err.description.includes("bot was blocked by the user")) ||
               (err.description && err.description.includes("USER_IS_BLOCKED"))
             ) {
-              console.log("Користувач заблокував бота — пропускаємо анкету.");
               return await handleSearch(ctx, user, id, isInline);
             } else {
               throw err;
@@ -1226,7 +1230,6 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
                   err.description.includes("bot was blocked by the user")) ||
                 (err.description && err.description.includes("USER_IS_BLOCKED"))
               ) {
-                console.log("Користувач заблокував бота — пропускаємо анкету.");
                 return await handleSearch(ctx, user, id, isInline);
               } else {
                 throw err;
@@ -1244,7 +1247,6 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
                 err.description.includes("bot was blocked by the user")) ||
               (err.description && err.description.includes("USER_IS_BLOCKED"))
             ) {
-              console.log("Користувач заблокував бота — пропускаємо анкету.");
               return await handleSearch(ctx, user, id, isInline);
             } else {
               throw err;
@@ -1294,9 +1296,6 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
                   (err.description &&
                     err.description.includes("USER_IS_BLOCKED"))
                 ) {
-                  console.log(
-                    "Користувач заблокував бота — пропускаємо анкету."
-                  );
                   return await handleSearch(ctx, user, id, isInline);
                 } else {
                   throw err;
@@ -1316,7 +1315,6 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
                   err.description.includes("bot was blocked by the user")) ||
                 (err.description && err.description.includes("USER_IS_BLOCKED"))
               ) {
-                console.log("Користувач заблокував бота — пропускаємо анкету.");
                 return await handleSearch(ctx, user, id, isInline);
               } else {
                 throw err;
@@ -1343,7 +1341,6 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
 // --------------------- Запуск ------------------------
 (async () => {
   try {
-    console.log("--------- BOT IS RUNNING! ---------");
     const WEBHOOK_PATH = "/bot" + process.env.BOT_TOKEN;
     const WEBHOOK_URL = `https://${
       process.env.RENDER_EXTERNAL_HOSTNAME || "your-app-name.onrender.com"
