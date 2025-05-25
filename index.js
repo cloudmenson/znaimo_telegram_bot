@@ -1111,6 +1111,11 @@ async function handleSearch(ctx, user, id, isInline = false) {
 
 async function handleLikeDislike(ctx, user, action, isInline = false) {
   try {
+    // Очистити editStep, якщо анкета завершена, але editStep лишився
+    if (user && user.finished && user.editStep) {
+      user.editStep = null;
+      await saveUser(user);
+    }
     if (!user || !user.currentView) {
       if (isInline) return ctx.answerCbQuery("Помилка. Спробуй знову");
       return ctx.reply("Помилка. Спробуй знову");
