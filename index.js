@@ -94,7 +94,7 @@ const pendingMenu = Markup.keyboard([["💝 Взаємно", "❌ Відхили
   .oneTime(false);
 
 // Меню для пошуку (reply-keyboard)
-const searchMenu = Markup.keyboard([["💝", "❌", "📝 Профіль"]])
+const searchMenu = Markup.keyboard([["💝", "❌", "🔙", "⚙️"]])
   .resize()
   .oneTime(false);
 
@@ -1075,6 +1075,8 @@ async function handleSearch(ctx, user, id, isInline = false) {
       return;
     }
 
+    // Save previous view before updating
+    user.lastView = user.currentView || null;
     user.currentView = other.id;
     user.lastAction = "search";
     await saveUser(user);
@@ -1608,4 +1610,36 @@ bot.action(/^unblock_(\d+)$/, async (ctx) => {
 
   await ctx.answerCbQuery("Користувача розблоковано.");
   await ctx.editMessageText("Користувача розблоковано ✅");
+});
+
+// Кнопка "⬅️ Назад" для повернення до попередньої анкети
+bot.hears("🔙", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished || !user.lastView) {
+    return ctx.reply("Немає попередньої анкети для перегляду.");
+  }
+
+  const prevUser = await loadUser(user.lastView);
+  if (!prevUser || !prevUser.data.photos || prevUser.data.photos.length === 0) {
+    return ctx.reply("Попередню анкету не знайдено або вона видалена.");
+  }
+
+  user.currentView = user.lastView;
+  await saveUser(user);
+
+  const photos = prevUser.data.photos;
+  await ctx.replyWithMediaGroup([
+    {
+      type: "photo",
+      media: photos[0],
+      caption: prettyProfile(prevUser),
+      parse_mode: "HTML",
+    },
+    ...photos.slice(1).map((file_id) => ({
+      type: "photo",
+      media: file_id,
+    })),
+  ]);
+
 });
