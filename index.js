@@ -54,7 +54,7 @@ bot.on("message", async (ctx, next) => {
 });
 
 // Основні меню як звичайна клавіатура
-const mainMenu = Markup.keyboard([["🔍 Анкети", "✏️ Змінити", "⚙️ Профіль"]])
+const mainMenu = Markup.keyboard([["🔍 Анкети", "✏️ Змінити", "⚙️ Профіль", "❓ FAQ"]])
   .resize()
   .oneTime(false);
 // Відображення власного профілю через клавіатуру
@@ -94,7 +94,7 @@ const pendingMenu = Markup.keyboard([["💝 Взаємно", "❌ Відхили
   .oneTime(false);
 
 // Меню для пошуку (reply-keyboard)
-const searchMenu = Markup.keyboard([["💝", "❌", "↩", "⚙️ Профіль"]])
+const searchMenu = Markup.keyboard([["💝", "💥", "❌", "↩", "⚙️ Профіль"]])
   .resize()
   .oneTime(false);
 
@@ -132,6 +132,7 @@ const startProfile = {
   finished: false,
   currentView: null,
   pendingLikes: [],
+  superLikesUsed: [],
 };
 
 function prettyProfile(user) {
@@ -500,6 +501,55 @@ bot.hears("❌ Відхилити", async (ctx) => {
   } else {
     await ctx.reply("Відхилено.", mainMenu);
   }
+});
+
+bot.hears("💥", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished || !user.currentView) {
+    return ctx.reply("Немає доступної анкети для оцінки.");
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  user.superLikesUsed = user.superLikesUsed || [];
+
+  if (user.superLikesUsed.includes(today)) {
+    return ctx.reply("💥 Ви вже використали супер-лайк сьогодні.");
+  }
+
+  if (!user.superLikeExplained) {
+    await ctx.reply("💥 Супер-лайк — це один потужний лайк на день, який гарантовано побачить інший користувач.");
+    user.superLikeExplained = true;
+    await saveUser(user);
+  }
+
+  user.superLikesUsed.push(today);
+  await saveUser(user);
+
+  const otherId = user.currentView;
+  const likedUser = await loadUser(otherId);
+  if (!likedUser) return ctx.reply("Помилка при завантаженні анкети.");
+
+  likedUser.pendingLikes = likedUser.pendingLikes || [];
+  if (!likedUser.pendingLikes.includes(user.id)) {
+    likedUser.pendingLikes.unshift(user.id); // на початок
+  }
+  await saveUser(likedUser);
+
+  try {
+    await ctx.telegram.sendMessage(
+      otherId,
+      `💥 У вас СУПЕР-ЛАЙК від @${user.username || user.id}!`
+    );
+  } catch (e) {
+    console.error("SUPERLIKE NOTIFY ERROR", e);
+  }
+
+  await ctx.reply("💥 Супер-лайк надіслано!", searchMenu);
+  user.seen = user.seen || [];
+  if (!user.seen.includes(otherId)) user.seen.push(otherId);
+  await saveUser(user);
+  await handleSearch(ctx, user, id, false);
 });
 
 // Меню редагування профілю: поля
@@ -1654,4 +1704,17 @@ bot.hears("↩", async (ctx) => {
       media: file_id,
     })),
   ]);
+});
+
+// FAQ handler
+bot.hears("❓ FAQ", async (ctx) => {
+  await ctx.replyWithHTML(`
+📘 <b>Пояснення кнопок</b>
+
+💝 — Звичайний лайк. Якщо взаємно — отримаєте контакт.
+💥 — <b>Супер-лайк</b>. Один на день. Сповіщає іншу людину одразу.
+❌ — Пропустити анкету.
+↩ — Повернення до попередньої (один раз за пошук).
+⚙️ — Перегляд або редагування свого профілю.
+    `);
 });
