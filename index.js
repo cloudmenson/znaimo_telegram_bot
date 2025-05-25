@@ -94,8 +94,7 @@ bot.hears("📝 Профіль", async (ctx) => {
       .map((file_id) => ({ type: "photo", media: file_id })),
   ]);
   // Повертаємо меню дій
-  // await ctx.reply("Обери дію:", mainMenu);
-  await ctx.sendMessage("‎", mainMenu);
+  await ctx.reply("Обери дію:", mainMenu);
 });
 
 // Меню очікування лайків (reply-keyboard)
@@ -316,8 +315,7 @@ bot.command("profile", async (ctx) => {
       media: file_id,
     })),
   ]);
-  // await ctx.reply("Обери дію:", mainMenu);
-  await ctx.sendMessage("‎", mainMenu);
+  await ctx.reply("Обери дію:", mainMenu);
 });
 
 bot.command("edit", async (ctx) => {
@@ -453,8 +451,7 @@ bot.action("profile", async (ctx) => {
         media: file_id,
       })),
     ]);
-    // await ctx.reply("Обери дію:", mainMenu);
-    await ctx.sendMessage("‎", mainMenu);
+    await ctx.reply("Обери дію:", mainMenu);
 
     await ctx.answerCbQuery();
   } catch (e) {
@@ -1102,8 +1099,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
       })),
     ]);
     // Use reply-keyboard for search mode
-    // await ctx.reply("📋 Зробіть свій вибір:", searchMenu);
-    await ctx.sendMessage("‎", searchMenu);
+    await ctx.reply("📋 Зробіть свій вибір:", searchMenu);
   } catch (e) {
     console.error("handleSearch ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
@@ -1421,8 +1417,7 @@ bot.hears("📝 Профіль", async (ctx) => {
       media: file_id,
     })),
   ]);
-  // await ctx.reply("Обери дію:", mainMenu);
-  await ctx.sendMessage("‎", mainMenu);
+  await ctx.reply("Обери дію:", mainMenu);
 });
 
 // Реферальна система
