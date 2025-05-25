@@ -1626,6 +1626,7 @@ bot.hears("↩", async (ctx) => {
   }
 
   user.currentView = user.lastView;
+  user.lastView = null;
   await saveUser(user);
 
   const photos = prevUser.data.photos;
@@ -1641,5 +1642,7 @@ bot.hears("↩", async (ctx) => {
       media: file_id,
     })),
   ]);
-
+  await ctx.reply(
+    "💫 Можна повернутися тільки на одну анкету назад за сеанс пошуку."
+  );
 });
