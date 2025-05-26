@@ -531,13 +531,18 @@ bot.hears("💥", async (ctx) => {
   }
 
   if (!user.superLikeExplained) {
-    await ctx.reply(
-      "💥 Супер-лайк — це один потужний лайк на день, який гарантовано побачить інший користувач."
-    );
     user.superLikeExplained = true;
     await saveUser(user);
+    return ctx.reply(
+      "💥 Супер-лайк — це один потужний лайк на день, який гарантовано побачить інший користувач.",
+      Markup.inlineKeyboard([
+        [Markup.button.callback("✅ Надіслати", "confirm_superlike")],
+        [Markup.button.callback("❌ Скасувати", "cancel_superlike")]
+      ])
+    );
   }
 
+  // Якщо пояснення вже було, одразу надсилаємо супер-лайк
   user.superLikesUsed.push(today);
   await saveUser(user);
 
@@ -565,6 +570,28 @@ bot.hears("💥", async (ctx) => {
   if (!user.seen.includes(otherId)) user.seen.push(otherId);
   await saveUser(user);
   await handleSearch(ctx, user, id, false);
+});
+
+// Обробник для підтвердження супер-лайка
+bot.action("confirm_superlike", async (ctx) => {
+  const id = ctx.from.id;
+  let user = await loadUser(id);
+  if (!user || !user.finished || !user.currentView) {
+    return ctx.answerCbQuery("Немає доступної анкети для оцінки.");
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  user.superLikesUsed = user.superLikesUsed || [];
+  if (user.superLikesUsed.includes(today)) {
+    return ctx.answerCbQuery("💥 Ви вже використали супер-лайк сьогодні.");
+  }
+  user.superLikesUsed.push(today);
+  await saveUser(user);
+  await handleLikeDislike(ctx, user, "like");
+});
+
+// Обробник для скасування супер-лайка
+bot.action("cancel_superlike", async (ctx) => {
+  await ctx.answerCbQuery("Скасовано.");
 });
 
 // Меню редагування профілю: поля
