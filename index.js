@@ -940,24 +940,29 @@ bot.on("message", async (ctx, next) => {
           user.step = "about";
           await saveUser(user);
           await ctx.reply(
-            "📝За бажанням, можеш додати інформацію про себе:",
-            Markup.removeKeyboard()
+            "📝 За бажанням, можеш додати інформацію про себе:",
+            Markup.keyboard([["Пропустити"]]).resize().oneTime(true)
           );
           break;
         case "about":
-          if (ctx.message.text && ctx.message.text.length > 200) {
+          if (ctx.message.text === "Пропустити") {
+            user.data.about = "";
+            user.step = "photos";
+            await saveUser(user);
             return ctx.reply(
-              "📝 За бажанням, можеш додати інформацію про себе:"
+              "📸 Надішліть до 3 фото. Коли готові — натисніть «Готово».",
+              Markup.keyboard([["Готово"]]).resize().oneTime(true)
             );
+          }
+          if (ctx.message.text && ctx.message.text.length > 200) {
+            return ctx.reply("📝 Текст має бути до 200 символів:");
           }
           user.data.about = ctx.message.text?.trim() || "";
           user.step = "photos";
           await saveUser(user);
           return ctx.reply(
             "📸 Надішліть до 3 фото. Коли готові — натисніть «Готово».",
-            Markup.keyboard([["Готово"]])
-              .resize()
-              .oneTime(true)
+            Markup.keyboard([["Готово"]]).resize().oneTime(true)
           );
         case "photos":
           if (ctx.message.photo) {
