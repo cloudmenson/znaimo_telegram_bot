@@ -541,8 +541,6 @@ bot.hears("💥", async (ctx) => {
   }
 
   if (!user.superLikeExplained) {
-    user.superLikeExplained = true;
-    await saveUser(user);
     return ctx.reply(
       "💥 Супер-лайк — це один потужний лайк на день, який гарантовано побачить інший користувач.",
       Markup.inlineKeyboard([
@@ -604,6 +602,7 @@ bot.action("confirm_superlike", async (ctx) => {
   if (user.superLikesUsed.includes(today)) {
     return ctx.answerCbQuery("💥 Ви вже використали супер-лайк сьогодні.");
   }
+  user.superLikeExplained = true;
   user.superLikesUsed.push(today);
   await saveUser(user);
   await handleLikeDislike(ctx, user, "like");
