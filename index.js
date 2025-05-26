@@ -140,12 +140,14 @@ function prettyProfile(user) {
   const name = user.data.name || "";
   const age = user.data.age || "";
   const city = user.data.city || "";
-  const about = user.data.about || "";
+  const about = user.data.about;
   let profileText = `<b>• Ім'я:</b> ${name}\n<b>• Вік:</b> ${age}\n`;
   if (city) {
     profileText += `<b>• Місто:</b> ${city}\n`;
   }
-  profileText += `\n\n<b>• Про себе:</b> ${about}`;
+  if (about) {
+    profileText += `\n<b>• Про себе:</b> ${about}`;
+  }
   return profileText;
 }
 
@@ -587,7 +589,7 @@ bot.action("edit_gender", async (ctx) => {
     await saveUser(user);
     return ctx.reply(
       "⚧ Обери стать:",
-      Markup.keyboard([["Хлопець", "Дівчина", "Інше"], ["Відмінити"]])
+      Markup.keyboard([["Хлопець", "Дівчина"], ["Відмінити"]])
         .resize()
         .oneTime(true)
     );
@@ -646,7 +648,7 @@ bot.action("edit_about", async (ctx) => {
     user.editStep = "edit_about";
     await saveUser(user);
     await ctx.reply(
-      "📝 Введи новий опис (5-200 символів):",
+      "📝 Введи новий опис:",
       Markup.keyboard([["Відмінити"]])
         .resize()
         .oneTime(true)
@@ -779,7 +781,7 @@ bot.on("message", async (ctx, next) => {
             await ctx.reply("Імʼя змінено ✅", mainMenu);
             break;
           case "edit_gender":
-            if (!["Хлопець", "Дівчина", "Інше"].includes(ctx.message.text)) {
+            if (!["Хлопець", "Дівчина"].includes(ctx.message.text)) {
               return ctx.reply("Будь ласка, обери стать з клавіатури:");
             }
             user.data.gender = ctx.message.text;
@@ -819,14 +821,10 @@ bot.on("message", async (ctx, next) => {
             await ctx.reply("Місто змінено ✅", mainMenu);
             break;
           case "edit_about":
-            if (
-              !ctx.message.text ||
-              ctx.message.text.length < 5 ||
-              ctx.message.text.length > 200
-            ) {
-              return ctx.reply("Введи опис від 5 до 200 символів:");
+            if (ctx.message.text && ctx.message.text.length > 200) {
+              return ctx.reply("Опис має бути до 200 символів.");
             }
-            user.data.about = ctx.message.text.trim();
+            user.data.about = ctx.message.text?.trim() || "";
             user.editStep = null;
             await saveUser(user);
             await ctx.reply("Опис змінено ✅", mainMenu);
@@ -910,13 +908,13 @@ bot.on("message", async (ctx, next) => {
           // Prompt for gender immediately
           return ctx.reply(
             "⚧ Обери стать:",
-            Markup.keyboard([["Хлопець", "Дівчина", "Інше"]])
+            Markup.keyboard([["Хлопець", "Дівчина"]])
               .resize()
               .oneTime(true)
           );
         }
         case "gender":
-          if (!["Хлопець", "Дівчина", "Інше"].includes(ctx.message.text)) {
+          if (!["Хлопець", "Дівчина"].includes(ctx.message.text)) {
             return ctx.reply("Будь ласка, обери стать з клавіатури:");
           }
           user.data.gender = ctx.message.text;
@@ -942,21 +940,17 @@ bot.on("message", async (ctx, next) => {
           user.step = "about";
           await saveUser(user);
           await ctx.reply(
-            "📝 Розкажи про себе коротко (до 200 символів):",
+            "📝За бажанням, можеш додати інформацію про себе:",
             Markup.removeKeyboard()
           );
           break;
         case "about":
-          if (
-            !ctx.message.text ||
-            ctx.message.text.length < 5 ||
-            ctx.message.text.length > 200
-          ) {
+          if (ctx.message.text && ctx.message.text.length > 200) {
             return ctx.reply(
-              "📝 Введи коротку інформацію про себе (5–200 символів):"
+              "📝 За бажанням, можеш додати інформацію про себе:"
             );
           }
-          user.data.about = ctx.message.text.trim();
+          user.data.about = ctx.message.text?.trim() || "";
           user.step = "photos";
           await saveUser(user);
           return ctx.reply(
