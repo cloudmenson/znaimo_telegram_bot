@@ -491,14 +491,24 @@ https://t.me/${pendingUser.username}`,
   // Відправляємо контакт користувача (ctx.from) pendingUser
   if (pendingUser) {
     const usernameOrId = user.username ? user.username : user.id;
-    await ctx.telegram.sendMessage(
-      pendingId,
-      `💞 У вас взаємний лайк!
+    try {
+      await ctx.telegram.sendMessage(
+        pendingId,
+        `💞 У вас взаємний лайк!
 
 Бажаємо приємного спілкування та чудового настрою!
 
 https://t.me/${usernameOrId}`
-    );
+      );
+    } catch (e) {
+      if (
+        e.description?.includes("bot was blocked by the user") ||
+        e.description?.includes("USER_IS_BLOCKED")
+      ) {
+        return;
+      }
+      return;
+    }
   }
 });
 bot.hears("❌ Відхилити", async (ctx) => {
@@ -557,19 +567,29 @@ bot.hears("💥", async (ctx) => {
   await saveUser(likedUser);
 
   try {
-    await ctx.telegram.sendMessage(
-      otherId,
-      `💥 У вас СУПЕР-ЛАЙК від @${user.username || user.id}!`
-    );
+    try {
+      await ctx.telegram.sendMessage(
+        otherId,
+        `💥 У вас СУПЕР-ЛАЙК від @${user.username || user.id}!`
+      );
+    } catch (e) {
+      if (
+        e.description?.includes("bot was blocked by the user") ||
+        e.description?.includes("USER_IS_BLOCKED")
+      ) {
+        return;
+      }
+      return;
+    }
+    await ctx.reply("💥 Супер-лайк надіслано!", searchMenu);
+    user.seen = user.seen || [];
+    if (!user.seen.includes(otherId)) user.seen.push(otherId);
+    await saveUser(user);
+    await handleSearch(ctx, user, id, false);
   } catch (e) {
-    console.error("SUPERLIKE NOTIFY ERROR", e);
+    // do nothing, as per instruction
+    return;
   }
-
-  await ctx.reply("💥 Супер-лайк надіслано!", searchMenu);
-  user.seen = user.seen || [];
-  if (!user.seen.includes(otherId)) user.seen.push(otherId);
-  await saveUser(user);
-  await handleSearch(ctx, user, id, false);
 });
 
 // Обробник для підтвердження супер-лайка
@@ -1275,14 +1295,12 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
               ]);
             } catch (err) {
               if (
-                (err.description &&
-                  err.description.includes("bot was blocked by the user")) ||
-                (err.description && err.description.includes("USER_IS_BLOCKED"))
+                err.description?.includes("bot was blocked by the user") ||
+                err.description?.includes("USER_IS_BLOCKED")
               ) {
                 return await handleSearch(ctx, user, id, isInline);
-              } else {
-                throw err;
               }
+              return await handleSearch(ctx, user, id, isInline);
             }
           }
           try {
@@ -1292,14 +1310,12 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
             );
           } catch (err) {
             if (
-              (err.description &&
-                err.description.includes("bot was blocked by the user")) ||
-              (err.description && err.description.includes("USER_IS_BLOCKED"))
+              err.description?.includes("bot was blocked by the user") ||
+              err.description?.includes("USER_IS_BLOCKED")
             ) {
               return await handleSearch(ctx, user, id, isInline);
-            } else {
-              throw err;
             }
+            return await handleSearch(ctx, user, id, isInline);
           }
 
           // Для користувача, який лайкнув (current user)
@@ -1319,14 +1335,12 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
               ]);
             } catch (err) {
               if (
-                (err.description &&
-                  err.description.includes("bot was blocked by the user")) ||
-                (err.description && err.description.includes("USER_IS_BLOCKED"))
+                err.description?.includes("bot was blocked by the user") ||
+                err.description?.includes("USER_IS_BLOCKED")
               ) {
                 return await handleSearch(ctx, user, id, isInline);
-              } else {
-                throw err;
               }
+              return await handleSearch(ctx, user, id, isInline);
             }
           }
           try {
@@ -1336,14 +1350,12 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
             );
           } catch (err) {
             if (
-              (err.description &&
-                err.description.includes("bot was blocked by the user")) ||
-              (err.description && err.description.includes("USER_IS_BLOCKED"))
+              err.description?.includes("bot was blocked by the user") ||
+              err.description?.includes("USER_IS_BLOCKED")
             ) {
               return await handleSearch(ctx, user, id, isInline);
-            } else {
-              throw err;
             }
+            return await handleSearch(ctx, user, id, isInline);
           }
           // Reset currentView after mutual like so profile doesn't reappear
           user.currentView = null;
@@ -1384,15 +1396,12 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
                 ]);
               } catch (err) {
                 if (
-                  (err.description &&
-                    err.description.includes("bot was blocked by the user")) ||
-                  (err.description &&
-                    err.description.includes("USER_IS_BLOCKED"))
+                  err.description?.includes("bot was blocked by the user") ||
+                  err.description?.includes("USER_IS_BLOCKED")
                 ) {
                   return await handleSearch(ctx, user, id, isInline);
-                } else {
-                  throw err;
                 }
+                return await handleSearch(ctx, user, id, isInline);
               }
             }
             // Потім текст з кнопками pendingMenu
@@ -1404,14 +1413,12 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
               );
             } catch (err) {
               if (
-                (err.description &&
-                  err.description.includes("bot was blocked by the user")) ||
-                (err.description && err.description.includes("USER_IS_BLOCKED"))
+                err.description?.includes("bot was blocked by the user") ||
+                err.description?.includes("USER_IS_BLOCKED")
               ) {
                 return await handleSearch(ctx, user, id, isInline);
-              } else {
-                throw err;
               }
+              return await handleSearch(ctx, user, id, isInline);
             }
           }
         }
@@ -1477,21 +1484,25 @@ cron.schedule("0 */12 * * *", async () => {
     if (now - lastUpdated < 12 * 60 * 60 * 1000) continue; // якщо був активний менш ніж 12 годин тому
 
     try {
-      await bot.telegram.sendMessage(
-        user.id,
-        `👋 Привіт! У нас нові анкети — перевір, хто тебе міг вже лайкнути!`,
-        Markup.keyboard([["🔍", "⚙️"]])
-          .resize()
-          .oneTime(true)
-      );
-    } catch (e) {
-      if (
-        e.description?.includes("bot was blocked by the user") ||
-        e.description?.includes("USER_IS_BLOCKED")
-      ) {
+      try {
+        await bot.telegram.sendMessage(
+          user.id,
+          `👋 Привіт! У нас нові анкети — перевір, хто тебе міг вже лайкнути!`,
+          Markup.keyboard([["🔍", "⚙️"]])
+            .resize()
+            .oneTime(true)
+        );
+      } catch (e) {
+        if (
+          e.description?.includes("bot was blocked by the user") ||
+          e.description?.includes("USER_IS_BLOCKED")
+        ) {
+          continue;
+        }
         continue;
       }
-      console.error("PUSH ERROR:", e);
+    } catch (e) {
+      continue;
     }
   }
 });
