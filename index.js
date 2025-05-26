@@ -587,11 +587,15 @@ bot.action("confirm_superlike", async (ctx) => {
   user.superLikesUsed.push(today);
   await saveUser(user);
   await handleLikeDislike(ctx, user, "like");
+  await ctx.reply("💥 Супер-лайк надіслано!", searchMenu);
 });
 
 // Обробник для скасування супер-лайка
 bot.action("cancel_superlike", async (ctx) => {
-  await ctx.answerCbQuery("Скасовано.");
+  const id = ctx.from.id;
+  const user = await loadUser(id);
+  await ctx.reply("❌ Супер-лайк скасовано.");
+  await handleSearch(ctx, user, id, false);
 });
 
 // Меню редагування профілю: поля
