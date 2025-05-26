@@ -288,9 +288,13 @@ bot.command("find", async (ctx) => {
 bot.command("profile", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
-  // Якщо анкету не створено або не завершено
-  if (!user || !user.finished) {
-    return ctx.reply("Ти ще не створив анкету. Натисни /start, щоб розпочати.");
+  // Якщо анкету не створено
+  if (!user) {
+    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
+  }
+  // Якщо анкета не завершена
+  if (!user.finished) {
+    return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
   }
   // Якщо фото відсутні
   if (!user.data.photos || user.data.photos.length === 0) {
@@ -319,8 +323,11 @@ bot.command("profile", async (ctx) => {
 bot.command("edit", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
-  if (!user || !user.finished) {
-    return ctx.reply("Спочатку створи анкету через /start");
+  if (!user) {
+    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
+  }
+  if (!user.finished) {
+    return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
   }
   await ctx.reply("Що ти хочеш змінити?", editProfileMenu);
 });
@@ -1509,8 +1516,11 @@ bot.hears("⚙️", async (ctx) => {
 bot.command("referral", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
-  if (!user || !user.finished) {
-    return ctx.reply("Спочатку створи анкету через /start.");
+  if (!user) {
+    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
+  }
+  if (!user.finished) {
+    return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
   }
   const count = user.referrals ? user.referrals.length : 0;
   const today = new Date().toISOString().slice(0, 10);
@@ -1535,8 +1545,11 @@ bot.command("referral", async (ctx) => {
 bot.command("premium", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
-  if (!user || !user.finished) {
-    return ctx.reply("Спочатку створи анкету через /start.");
+  if (!user) {
+    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
+  }
+  if (!user.finished) {
+    return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
   }
   // TODO: імплементувати логіку рефералів
   await ctx.reply("⭐ Преміум система поки в розробці.");
@@ -1546,8 +1559,11 @@ bot.command("premium", async (ctx) => {
 bot.command("privacy", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
-  if (!user || !user.finished) {
-    return ctx.reply("Спочатку створи анкету через /start.");
+  if (!user) {
+    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
+  }
+  if (!user.finished) {
+    return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
   }
   await ctx.replyWithHTML(`
 🔒 <b>Політика приватності для Telegram-бота Znaimo</b>
@@ -1593,8 +1609,11 @@ bot.command("blacklist", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
 
-  if (!user || !user.finished) {
-    return ctx.reply("Спочатку створи анкету через /start.");
+  if (!user) {
+    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
+  }
+  if (!user.finished) {
+    return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
   }
 
   // Дозволяємо чорний список лише якщо користувач у режимі пошуку анкет
@@ -1622,9 +1641,6 @@ bot.command("blacklist", async (ctx) => {
 bot.command("language", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
-  if (!user || !user.finished) {
-    return ctx.reply("Спочатку створи анкету через /start.");
-  }
   // TODO: імплементувати переклади
   await ctx.reply("🌐 Майбутні мови: 🇵🇱, 🇬🇧 — у розробці.");
 });
