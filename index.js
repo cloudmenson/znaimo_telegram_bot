@@ -276,8 +276,11 @@ bot.command("find", async (ctx) => {
   // Дія як bot.action("search")
   const id = ctx.from.id;
   let user = await loadUser(id);
-  if (!user || !user.finished) {
-    return ctx.reply("Спочатку створи анкету через /start");
+  if (!user) {
+    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
+  }
+  if (!user.finished) {
+    return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
   }
   await handleSearch(ctx, user, id, false);
 });
