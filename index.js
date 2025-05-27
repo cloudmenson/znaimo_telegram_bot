@@ -110,9 +110,12 @@ const editProfileMenu = Markup.inlineKeyboard([
   ],
   [Markup.button.callback("📝 Опис", "edit_about")],
   [Markup.button.callback("🔎 Пошук статі", "edit_searchGender")],
+  [Markup.button.callback("🔞 Мінімальний вік",  "edit_minAge" )],
+  [Markup.button.callback("🔞 Максимальний вік",  "edit_maxAge" )],
   [Markup.button.callback("🤳 Фото", "edit_photos")],
   [Markup.button.callback("🚫 Чорний список", "edit_blacklist")],
 ]);
+
 
 const startProfile = {
   step: "name",
@@ -758,6 +761,22 @@ bot.action("edit_photos", async (ctx) => {
   }
 });
 
+bot.action("edit_minAge", async (ctx) => {
+  const user = await loadUser(ctx.from.id);
+  user.editStep = null;
+  user.step = "edit_minAge";
+  await saveUser(user);
+  await ctx.editMessageText("Введіть новий мінімальний вік (від 18 до 99):");
+});
+
+bot.action("edit_maxAge", async (ctx) => {
+  const user = await loadUser(ctx.from.id);
+  user.editStep = null;
+  user.step = "edit_maxAge";
+  await saveUser(user);
+  await ctx.editMessageText("Введіть новий максимальний вік (від 18 до 99):");
+});
+
 bot.action(/^blacklist_confirm_(\d+)$/, async (ctx) => {
   const blockedId = parseInt(ctx.match[1]);
   const id = ctx.from.id;
@@ -942,6 +961,38 @@ bot.on("message", async (ctx, next) => {
         await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
         return;
       }
+    }
+
+    // --- Окремий блок для редагування minAge/maxAge через меню профілю ---
+    if (user.step === "edit_minAge") {
+      const minAge = Number(ctx.message.text);
+      if (
+        isNaN(minAge) ||
+        minAge < 18 ||
+        minAge > 99 ||
+        (user.data.maxAge && minAge > user.data.maxAge)
+      ) {
+        return ctx.reply("Невірне значення. Введіть число від 18 до 99, не більше за максимальний вік.");
+      }
+      user.data.minAge = minAge;
+      user.step = null;
+      await saveUser(user);
+      return ctx.reply("Мінімальний вік оновлено.");
+    }
+    if (user.step === "edit_maxAge") {
+      const maxAge = Number(ctx.message.text);
+      if (
+        isNaN(maxAge) ||
+        maxAge < 18 ||
+        maxAge > 99 ||
+        (user.data.minAge && maxAge < user.data.minAge)
+      ) {
+        return ctx.reply("Невірне значення. Введіть число від 18 до 99, не менше за мінімальний вік.");
+      }
+      user.data.maxAge = maxAge;
+      user.step = null;
+      await saveUser(user);
+      return ctx.reply("Максимальний вік оновлено.");
     }
 
     // Якщо анкета вже заповнена — не реагувати (всі дії через інлайн)
@@ -1177,6 +1228,13 @@ async function handleSearch(ctx, user, id, isInline = false) {
       const target =
         user.data.searchGender === "Хлопці" ? "Хлопець" : "Дівчина";
       filtered = filtered.filter((u) => u.data.gender === target);
+    }
+    // Apply age range filter (NEW)
+    if (user.data.ageMin && user.data.ageMax) {
+      filtered = filtered.filter((u) => {
+        const age = u.data.age;
+        return typeof age === "number" && age >= user.data.ageMin && age <= user.data.ageMax;
+      });
     }
     // Sort by proximity if coordinates are available
     let candidates = filtered;
