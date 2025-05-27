@@ -127,6 +127,8 @@ const startProfile = {
     searchGender: "", // preferred gender to search
     latitude: null,
     longitude: null,
+    minAge: 18,
+    maxAge: 99,
   },
   seen: [],
   finished: false,
@@ -1009,19 +1011,33 @@ bot.on("message", async (ctx, next) => {
         case "about":
           if (ctx.message.text === "Пропустити") {
             user.data.about = "";
-            user.step = "photos";
+            user.step = "minAge";
             await saveUser(user);
-            return ctx.reply(
-              "📸 Надішліть до 3 фото. Коли готові — натисніть «Готово».",
-              Markup.keyboard([["Готово"]])
-                .resize()
-                .oneTime(true)
-            );
+            return ctx.reply("Введіть мінімальний вік анкет, які будуть вам траплятись в пошуку та яким буде відображатись ваша анкета. (18–99):");
           }
           if (ctx.message.text && ctx.message.text.length > 200) {
             return ctx.reply("📝 Текст має бути до 200 символів:");
           }
           user.data.about = ctx.message.text?.trim() || "";
+          user.step = "minAge";
+          await saveUser(user);
+          return ctx.reply("Введіть мінімальний вік анкет, які будуть вам траплятись в пошуку та яким буде відображатись ваша анкета. (18–99):");
+        case "minAge": {
+          const minAge = parseInt(ctx.message.text, 10);
+          if (isNaN(minAge) || minAge < 18 || minAge > 99) {
+            return ctx.reply("Введіть коректний мінімальний вік (18-99):");
+          }
+          user.data.minAge = minAge;
+          user.step = "maxAge";
+          await saveUser(user);
+          return ctx.reply("Введіть максимальний вік анкет, які вам підходять. (Має бути ≥ мінімального і не більше 99)");
+        }
+        case "maxAge": {
+          const maxAge = parseInt(ctx.message.text, 10);
+          if (isNaN(maxAge) || maxAge < 18 || maxAge > 99 || maxAge < user.data.minAge) {
+            return ctx.reply("Введіть коректний максимальний вік (18-99):");
+          }
+          user.data.maxAge = maxAge;
           user.step = "photos";
           await saveUser(user);
           return ctx.reply(
@@ -1030,6 +1046,7 @@ bot.on("message", async (ctx, next) => {
               .resize()
               .oneTime(true)
           );
+        }
         case "photos":
           if (ctx.message.photo) {
             if (user.data.photos.length >= 3) {
