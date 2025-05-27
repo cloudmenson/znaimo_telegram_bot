@@ -1458,6 +1458,14 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
       process.env.RENDER_EXTERNAL_HOSTNAME || "your-app-name.onrender.com"
     }${WEBHOOK_PATH}`;
 
+    process.on("unhandledRejection", (reason, p) => {
+      console.error("Unhandled Rejection at:", p, "reason:", reason);
+    });
+
+    process.on("uncaughtException", (err) => {
+      console.error("Uncaught Exception thrown:", err);
+    });
+
     // Set bot commands and webhook
     await bot.telegram.setMyCommands([
       { command: "profile", description: "⚙️ Профіль" },
