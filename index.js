@@ -1229,11 +1229,11 @@ async function handleSearch(ctx, user, id, isInline = false) {
         user.data.searchGender === "Хлопці" ? "Хлопець" : "Дівчина";
       filtered = filtered.filter((u) => u.data.gender === target);
     }
-    // Apply age range filter (NEW)
-    if (user.data.ageMin && user.data.ageMax) {
+    // Apply age range filter (FIXED)
+    if (user.data.minAge && user.data.maxAge) {
       filtered = filtered.filter((u) => {
         const age = u.data.age;
-        return typeof age === "number" && age >= user.data.ageMin && age <= user.data.ageMax;
+        return typeof age === "number" && age >= user.data.minAge && age <= user.data.maxAge;
       });
     }
     // Sort by proximity if coordinates are available
