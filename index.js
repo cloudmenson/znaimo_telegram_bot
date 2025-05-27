@@ -393,7 +393,7 @@ bot.action("edit_profile", async (ctx) => {
     if (!user.finished) {
       return ctx.answerCbQuery("Спочатку створи анкету!");
     }
-    await ctx.editMessageText("Що ти хочеш змінити?", editProfileMenu);
+    await ctx.reply("Що ти хочеш змінити?", editProfileMenu);
   } catch (e) {
     console.error("EDIT_PROFILE ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
@@ -766,7 +766,7 @@ bot.action("edit_minAge", async (ctx) => {
   user.editStep = null;
   user.step = "edit_minAge";
   await saveUser(user);
-  await ctx.editMessageText("Введіть новий мінімальний вік (від 18 до 99):");
+  await ctx.reply("Введіть новий мінімальний вік (від 18 до 99):");
 });
 
 bot.action("edit_maxAge", async (ctx) => {
@@ -774,7 +774,7 @@ bot.action("edit_maxAge", async (ctx) => {
   user.editStep = null;
   user.step = "edit_maxAge";
   await saveUser(user);
-  await ctx.editMessageText("Введіть новий максимальний вік (від 18 до 99):");
+  await ctx.reply("Введіть новий максимальний вік (від 18 до 99):");
 });
 
 bot.action(/^blacklist_confirm_(\d+)$/, async (ctx) => {
@@ -1266,7 +1266,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
       user.hasUsedBackInSearch = false;
       await saveUser(user);
       if (isInline) {
-        await ctx.editMessageText(
+        await ctx.reply(
           "Анкет більше немає. Спробуй пізніше.",
           mainMenu
         );
@@ -1820,7 +1820,7 @@ bot.action(/^unblock_(\d+)$/, async (ctx) => {
   await saveUser(user);
 
   await ctx.answerCbQuery("Користувача розблоковано.");
-  await ctx.editMessageText("Користувача розблоковано ✅");
+  await ctx.reply("Користувача розблоковано ✅");
 });
 
 // Кнопка "⬅️ Назад" для повернення до попередньої анкети (нова логіка)
