@@ -545,7 +545,7 @@ bot.hears("💥", async (ctx) => {
       "💥 Супер-лайк — це один потужний лайк на день, який гарантовано побачить інший користувач.",
       Markup.inlineKeyboard([
         [Markup.button.callback("✅ Надіслати", "confirm_superlike")],
-        [Markup.button.callback("❌ Скасувати", "cancel_superlike")]
+        [Markup.button.callback("❌ Скасувати", "cancel_superlike")],
       ])
     );
   }
@@ -1001,7 +1001,9 @@ bot.on("message", async (ctx, next) => {
           await saveUser(user);
           await ctx.reply(
             "📝 За бажанням, можеш додати інформацію про себе:",
-            Markup.keyboard([["Пропустити"]]).resize().oneTime(true)
+            Markup.keyboard([["Пропустити"]])
+              .resize()
+              .oneTime(true)
           );
           break;
         case "about":
@@ -1011,7 +1013,9 @@ bot.on("message", async (ctx, next) => {
             await saveUser(user);
             return ctx.reply(
               "📸 Надішліть до 3 фото. Коли готові — натисніть «Готово».",
-              Markup.keyboard([["Готово"]]).resize().oneTime(true)
+              Markup.keyboard([["Готово"]])
+                .resize()
+                .oneTime(true)
             );
           }
           if (ctx.message.text && ctx.message.text.length > 200) {
@@ -1022,7 +1026,9 @@ bot.on("message", async (ctx, next) => {
           await saveUser(user);
           return ctx.reply(
             "📸 Надішліть до 3 фото. Коли готові — натисніть «Готово».",
-            Markup.keyboard([["Готово"]]).resize().oneTime(true)
+            Markup.keyboard([["Готово"]])
+              .resize()
+              .oneTime(true)
           );
         case "photos":
           if (ctx.message.photo) {
@@ -1096,7 +1102,14 @@ bot.on("message", async (ctx, next) => {
           user.finished = true;
           user.step = null;
           await saveUser(user);
-          return ctx.reply("✅ Ваша анкета готова!", mainMenu);
+
+          await ctx.reply("✅ Ваша анкета готова!", mainMenu);
+
+          // ❗️ Інформаційне повідомлення про username/forward privacy
+          await ctx.reply(
+            "❗️Щоб інші могли зв’язатися з тобою після взаємного лайку, переконайся, що:\n• У тебе є username в Telegram\n— ТАКОЖ —\n• Перевір в налаштуваннях Telegram → Приватність → Пересилання повідомлень увімкнено «Усі»."
+          );
+          return;
         default:
           await ctx.reply("Щось пішло не так. /start щоб почати спочатку.");
       }
@@ -1592,8 +1605,10 @@ bot.command("premium", async (ctx) => {
   if (!user.finished) {
     return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
   }
-  // TODO: імплементувати логіку рефералів
-  await ctx.reply("⭐ Преміум система поки в розробці.");
+
+  await ctx.reply(
+    "⏳ Оплата наразі у розробці. Незабаром зʼявиться можливість підтримати нас ❤️"
+  );
 });
 
 // Політика приватності
