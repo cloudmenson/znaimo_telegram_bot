@@ -146,16 +146,20 @@ function prettyProfile(user) {
   const age = user.data.age || "";
   const city = user.data.city || "";
   const about = user.data.about;
+
+  if (user.premiumUntil && new Date(user.premiumUntil) > new Date()) {
+    profileText += `\n<b>⭐ Premium</b>\n`;
+  }
+
   let profileText = `<b>• Ім'я:</b> ${name}\n<b>• Вік:</b> ${age}\n`;
+
   if (city) {
     profileText += `<b>• Місто:</b> ${city}\n`;
   }
   if (about) {
     profileText += `\n<b>• Про себе:</b> ${about}`;
   }
-  if (user.premiumUntil && new Date(user.premiumUntil) > new Date()) {
-    profileText += `\n<b>⭐ Premium</b>\n`;
-  }
+
   return profileText;
 }
 
@@ -1706,7 +1710,8 @@ bot.command("premium", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
   if (!user) return ctx.reply("Ти ще не створив анкету. Натисни /start.");
-  if (!user.finished) return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
+  if (!user.finished)
+    return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
 
   await ctx.replyWithHTML(`
 💳 <b>Щоб отримати преміум на 30 днів</b>:
