@@ -1231,59 +1231,49 @@ async function handleSearch(ctx, user, id, isInline = false) {
     const hasPending = await checkPendingLikes(ctx, user);
     if (hasPending) return;
 
-    // Compose MongoDB filter for search
     const seen = user.seen || [];
     const disliked = user.disliked || [];
-    const blacklist = user.blacklist || [];
-    let genderFilter = {};
+    const [_, allUsers] = await Promise.all([
+      Promise.resolve(user), // keep for symmetry, user is already loaded
+      getAllUsers(),
+    ]);
+    // Initial filter: exclude self, unfinished, seen, disliked, currentView, and users without valid photo(s)
+    let filtered = allUsers.filter(
+      (u) =>
+        u.id !== id &&
+        u.finished &&
+        !seen.includes(u.id) &&
+        u.id !== user.currentView &&
+        !disliked.includes(u.id) &&
+        !(user.blacklist || []).includes(u.id) &&
+        Array.isArray(u.data.photos) &&
+        u.data.photos.some(Boolean)
+    );
+    // Apply gender filter if selected
     if (
       user.data.searchGender &&
       user.data.searchGender !== "" &&
       user.data.searchGender !== "Будь-хто"
     ) {
-      genderFilter["data.gender"] =
+      const target =
         user.data.searchGender === "Хлопці" ? "Хлопець" : "Дівчина";
+      filtered = filtered.filter((u) => u.data.gender === target);
     }
-    // Age filter
-    let ageFilter = {};
+    // Apply age range filter (FIXED)
     if (user.data.minAge && user.data.maxAge) {
-      ageFilter["data.age"] = { $gte: user.data.minAge, $lte: user.data.maxAge };
+      filtered = filtered.filter((u) => {
+        const age = u.data.age;
+        return (
+          typeof age === "number" &&
+          age >= user.data.minAge &&
+          age <= user.data.maxAge
+        );
+      });
     }
-    // Exclude seen, disliked, self, currentView, blacklist, unfinished, users without photos
-    const excludeIds = [
-      id,
-      ...(seen || []),
-      ...(disliked || []),
-      ...(blacklist || []),
-    ];
-    if (user.currentView) excludeIds.push(user.currentView);
-
-    // Only select users with at least one photo
-    const db = getDb();
-    const baseQuery = {
-      finished: true,
-      id: { $nin: excludeIds },
-      "data.photos.0": { $exists: true },
-      ...genderFilter,
-      ...ageFilter,
-    };
-
-    // Project only necessary fields
-    let candidates = await db
-      .collection("users")
-      .find(baseQuery, {
-        projection: {
-          id: 1,
-          data: 1,
-          premiumUntil: 1,
-          username: 1,
-        },
-      })
-      .toArray();
-
     // Sort by proximity if coordinates are available
+    let candidates = filtered;
     if (user.data.latitude != null && user.data.longitude != null) {
-      const withCoords = candidates.filter(
+      const withCoords = filtered.filter(
         (u) => u.data.latitude != null && u.data.longitude != null
       );
       const sortedCoords = withCoords
@@ -1296,7 +1286,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
         }))
         .sort((a, b) => a.distance - b.distance)
         .map((item) => item.user);
-      const withoutCoords = candidates.filter(
+      const withoutCoords = filtered.filter(
         (u) => u.data.latitude == null || u.data.longitude == null
       );
       candidates = [...sortedCoords, ...withoutCoords];
@@ -1309,7 +1299,11 @@ async function handleSearch(ctx, user, id, isInline = false) {
       user.lastAction = "search";
       user.hasUsedBackInSearch = false;
       await saveUser(user);
-      await ctx.reply("Анкет більше немає. Спробуй пізніше.", mainMenu);
+      if (isInline) {
+        await ctx.reply("Анкет більше немає. Спробуй пізніше.", mainMenu);
+      } else {
+        await ctx.reply("Анкет більше немає. Спробуй пізніше.", mainMenu);
+      }
       return;
     }
 
@@ -1354,6 +1348,7 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
     }
     const id = ctx.from.id;
     const otherId = user?.currentView;
+
     // Ліміт лайків на день: перевірка тільки для дії like
     if (action === "like") {
       if (user.premiumUntil && new Date(user.premiumUntil) > new Date()) {
@@ -1378,7 +1373,7 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
 
     // Load both user and liked/disliked user in parallel
     const [_, likedUser] = await Promise.all([
-      Promise.resolve(user),
+      Promise.resolve(user), // user already loaded
       loadUser(otherId),
     ]);
     if (!likedUser.seen) likedUser.seen = [];
@@ -1401,7 +1396,6 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
       await saveUser(user);
     }
 
-    // LIKE/DISLIKE DB update and next search in parallel if possible
     if (likedUser) {
       if (action === "like") {
         if ((likedUser.seen || []).includes(id)) {
@@ -1504,54 +1498,50 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
           if (!likedUser.pendingLikes) likedUser.pendingLikes = [];
           if (!likedUser.pendingLikes.includes(user.id)) {
             likedUser.pendingLikes.push(user.id);
-            // Save likedUser and send notification in parallel with next search
-            await Promise.all([
-              saveUser(likedUser),
-              (async () => {
-                // Негайне повідомлення користувачу, якому поставили лайк
-                // Спочатку його профіль
-                if (user.data.photos && user.data.photos.length > 0) {
-                  try {
-                    await ctx.telegram.sendMediaGroup(likedUser.id, [
-                      {
-                        type: "photo",
-                        media: user.data.photos[0],
-                        caption: prettyProfile(user),
-                        parse_mode: "HTML",
-                      },
-                      ...user.data.photos.slice(1).map((file_id) => ({
-                        type: "photo",
-                        media: file_id,
-                      })),
-                    ]);
-                  } catch (err) {
-                    if (
-                      err.description?.includes("bot was blocked by the user") ||
-                      err.description?.includes("USER_IS_BLOCKED")
-                    ) {
-                      return;
-                    }
-                    return;
-                  }
+            await saveUser(likedUser);
+
+            // Негайне повідомлення користувачу, якому поставили лайк
+            // Спочатку його профіль
+            if (user.data.photos && user.data.photos.length > 0) {
+              try {
+                await ctx.telegram.sendMediaGroup(likedUser.id, [
+                  {
+                    type: "photo",
+                    media: user.data.photos[0],
+                    caption: prettyProfile(user),
+                    parse_mode: "HTML",
+                  },
+                  ...user.data.photos.slice(1).map((file_id) => ({
+                    type: "photo",
+                    media: file_id,
+                  })),
+                ]);
+              } catch (err) {
+                if (
+                  err.description?.includes("bot was blocked by the user") ||
+                  err.description?.includes("USER_IS_BLOCKED")
+                ) {
+                  return await handleSearch(ctx, user, id, isInline);
                 }
-                // Потім текст з кнопками pendingMenu
-                try {
-                  await ctx.telegram.sendMessage(
-                    likedUser.id,
-                    "💞 Вам хтось поставив лайк!",
-                    pendingMenu
-                  );
-                } catch (err) {
-                  if (
-                    err.description?.includes("bot was blocked by the user") ||
-                    err.description?.includes("USER_IS_BLOCKED")
-                  ) {
-                    return;
-                  }
-                  return;
-                }
-              })(),
-            ]);
+                return await handleSearch(ctx, user, id, isInline);
+              }
+            }
+            // Потім текст з кнопками pendingMenu
+            try {
+              await ctx.telegram.sendMessage(
+                likedUser.id,
+                "💞 Вам хтось поставив лайк!",
+                pendingMenu
+              );
+            } catch (err) {
+              if (
+                err.description?.includes("bot was blocked by the user") ||
+                err.description?.includes("USER_IS_BLOCKED")
+              ) {
+                return await handleSearch(ctx, user, id, isInline);
+              }
+              return await handleSearch(ctx, user, id, isInline);
+            }
           }
         }
       }
