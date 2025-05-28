@@ -1543,7 +1543,7 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
 
     // Set bot commands and webhook
     await bot.telegram.setMyCommands([
-      { command: "profile", description: "⚙️ Профіль" },
+      { command: "profile", description: "👤 Профіль" },
       { command: "premium", description: "⭐️ Преміум" },
       { command: "referral", description: "🎁 Реферальна система" },
       { command: "privacy", description: "🔒 Політика приватності" },
