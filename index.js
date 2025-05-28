@@ -146,12 +146,11 @@ function prettyProfile(user) {
   const age = user.data.age || "";
   const city = user.data.city || "";
   const about = user.data.about;
+  let profileText = `<b>• Ім'я:</b> ${name}\n<b>• Вік:</b> ${age}\n`;
 
   if (user.premiumUntil && new Date(user.premiumUntil) > new Date()) {
     profileText += `\n<b>⭐ Premium</b>\n`;
   }
-
-  let profileText = `<b>• Ім'я:</b> ${name}\n<b>• Вік:</b> ${age}\n`;
 
   if (city) {
     profileText += `<b>• Місто:</b> ${city}\n`;
