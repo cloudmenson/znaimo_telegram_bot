@@ -138,6 +138,7 @@ const startProfile = {
   pendingLikes: [],
   superLikesUsed: [],
   hasUsedBackInSearch: false,
+  premiumUntil: null,
 };
 
 function prettyProfile(user) {
@@ -151,6 +152,9 @@ function prettyProfile(user) {
   }
   if (about) {
     profileText += `\n<b>• Про себе:</b> ${about}`;
+  }
+  if (user.premiumUntil && new Date(user.premiumUntil) > new Date()) {
+    profileText += `\n<b>⭐ Premium</b>\n`;
   }
   return profileText;
 }
@@ -1335,20 +1339,24 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
 
     // Ліміт лайків на день: перевірка тільки для дії like
     if (action === "like") {
-      const today = new Date().toISOString().slice(0, 10);
-      if (!user.lastLikeDate || user.lastLikeDate !== today) {
-        user.lastLikeDate = today;
-        user.dailyLikes = 0;
+      if (user.premiumUntil && new Date(user.premiumUntil) > new Date()) {
+        // Premium user — skip like limit
+      } else {
+        const today = new Date().toISOString().slice(0, 10);
+        if (!user.lastLikeDate || user.lastLikeDate !== today) {
+          user.lastLikeDate = today;
+          user.dailyLikes = 0;
+        }
+        const referralBonus = (user.referrals?.length || 0) * 5;
+        const maxLikes = 50 + referralBonus;
+        if (user.dailyLikes >= maxLikes) {
+          return ctx.reply(
+            `🚫 Ви досягли денного ліміту лайків. Спробуйте пізніше.`
+          );
+        }
+        user.dailyLikes = (user.dailyLikes || 0) + 1;
+        await saveUser(user);
       }
-      const referralBonus = (user.referrals?.length || 0) * 5;
-      const maxLikes = 50 + referralBonus;
-      if (user.dailyLikes >= maxLikes) {
-        return ctx.reply(
-          `🚫 Ви досягли денного ліміту лайків. Спробуйте пізніше.`
-        );
-      }
-      user.dailyLikes = (user.dailyLikes || 0) + 1;
-      await saveUser(user);
     }
 
     // Load both user and liked/disliked user in parallel
@@ -1697,23 +1705,26 @@ bot.command("referral", async (ctx) => {
 bot.command("premium", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
-  if (!user) {
-    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
-  }
-  if (!user.finished) {
-    return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
-  }
+  if (!user) return ctx.reply("Ти ще не створив анкету. Натисни /start.");
+  if (!user.finished) return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
 
   await ctx.replyWithHTML(`
-💳 <b>Щоб отримати преміум</b>:
+💳 <b>Щоб отримати преміум на 30 днів</b>:
 
 1. Переведіть <b>100 грн</b> на карту:  
-<code>1111 1111 1111 1111</code>
+<code>4441 1110 5652 0756</code>
 
 2. Надішліть скріншот платежу сюди 👉 <a href="https://t.me/znaimoHelper">@znaimoHelper</a>
 
-Ми вручну активуємо вам доступ протягом 24 годин. Дякуємо за підтримку!
-  `);
+Після активації ви отримаєте:
+• 💝 Безлімітні лайки щодня
+• 📓 Збільшено ліміт чорного списку з 50 до 100 користувачів
+• 📵 Відсутність реклами
+• 🧭 Підтримка проєкту
+• 🕐 Термін дії: 30 днів
+
+Ми вручну активуємо вам доступ протягом 2 годин. Дякуємо за підтримку!
+`);
 });
 
 // Політика приватності
@@ -1912,15 +1923,12 @@ bot.hears("❓", async (ctx) => {
 bot.hears("⭐", async (ctx) => {
   await ctx.replyWithHTML(
     `
-<b>⭐ Переваги Преміуму</b>
-
-• 🇺🇦 <b>Пошук по місту</b>: можливість шукати людей зі свого міста або області
-
-• 📓 <b>Збільшено ліміт чорного списку</b>: з 50 до 100 користувачів
-
-• 📵 <b>Реклама відсутня</b>
-
-• 💘 <b>Підтримка проєкту</b>: Ви допомагаєте нам підтримувати бота без реклами і розвивати його функціонал далі
+Після активації ви отримаєте:
+• 💝 Безлімітні лайки щодня
+• 📓 Збільшено ліміт чорного списку з 50 до 100 користувачів
+• 📵 Відсутність реклами
+• 🧭 Підтримка проєкту
+• 🕐 Термін дії: 30 днів
     `,
     Markup.inlineKeyboard([
       [Markup.button.callback("💳 Купити Преміум", "buy_premium")],
@@ -1938,6 +1946,6 @@ bot.action("buy_premium", async (ctx) => {
 
 2. Надішліть скріншот платежу сюди 👉 <a href="https://t.me/znaimoHelper">@znaimoHelper</a>
 
-Ми вручну активуємо вам доступ протягом години. Дякуємо за підтримку!
+Ми вручну активуємо вам доступ протягом 2 години. Дякуємо за підтримку!
   `);
 });
