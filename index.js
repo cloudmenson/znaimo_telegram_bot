@@ -144,9 +144,10 @@ const startProfile = {
 function prettyProfile(user) {
   let profileText = "";
 
-  const isPremium = user.premiumUntil && new Date(user.premiumUntil) > new Date();
+  const isPremium =
+    user.premiumUntil && new Date(user.premiumUntil) > new Date();
   if (isPremium) {
-    profileText += `⭐ Premium\n`;
+    profileText += `<span class="tg-spoiler">⭐ Premium</span>\n`;
   }
 
   const data = user.data || {};
