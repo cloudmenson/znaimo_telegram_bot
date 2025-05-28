@@ -110,12 +110,11 @@ const editProfileMenu = Markup.inlineKeyboard([
   ],
   [Markup.button.callback("📝 Опис", "edit_about")],
   [Markup.button.callback("🔎 Пошук статі", "edit_searchGender")],
-  [Markup.button.callback("🔞 Мінімальний вік",  "edit_minAge" )],
-  [Markup.button.callback("🔞 Максимальний вік",  "edit_maxAge" )],
+  [Markup.button.callback("🔞 Мінімальний вік", "edit_minAge")],
+  [Markup.button.callback("🔞 Максимальний вік", "edit_maxAge")],
   [Markup.button.callback("🤳 Фото", "edit_photos")],
   [Markup.button.callback("🚫 Чорний список", "edit_blacklist")],
 ]);
-
 
 const startProfile = {
   step: "name",
@@ -972,7 +971,9 @@ bot.on("message", async (ctx, next) => {
         minAge > 99 ||
         (user.data.maxAge && minAge > user.data.maxAge)
       ) {
-        return ctx.reply("Невірне значення. Введіть число від 18 до 99, не більше за максимальний вік.");
+        return ctx.reply(
+          "Невірне значення. Введіть число від 18 до 99, не більше за максимальний вік."
+        );
       }
       user.data.minAge = minAge;
       user.step = null;
@@ -987,7 +988,9 @@ bot.on("message", async (ctx, next) => {
         maxAge > 99 ||
         (user.data.minAge && maxAge < user.data.minAge)
       ) {
-        return ctx.reply("Невірне значення. Введіть число від 18 до 99, не менше за мінімальний вік.");
+        return ctx.reply(
+          "Невірне значення. Введіть число від 18 до 99, не менше за мінімальний вік."
+        );
       }
       user.data.maxAge = maxAge;
       user.step = null;
@@ -1064,7 +1067,9 @@ bot.on("message", async (ctx, next) => {
             user.data.about = "";
             user.step = "minAge";
             await saveUser(user);
-            return ctx.reply("Введіть мінімальний вік анкет, які будуть вам траплятись в пошуку та яким буде відображатись ваша анкета. (18–99):");
+            return ctx.reply(
+              "Введіть мінімальний вік анкет, які будуть вам траплятись в пошуку та яким буде відображатись ваша анкета. (18–99):"
+            );
           }
           if (ctx.message.text && ctx.message.text.length > 200) {
             return ctx.reply("📝 Текст має бути до 200 символів:");
@@ -1072,7 +1077,9 @@ bot.on("message", async (ctx, next) => {
           user.data.about = ctx.message.text?.trim() || "";
           user.step = "minAge";
           await saveUser(user);
-          return ctx.reply("Введіть мінімальний вік анкет, які будуть вам траплятись в пошуку та яким буде відображатись ваша анкета. (18–99):");
+          return ctx.reply(
+            "Введіть мінімальний вік анкет, які будуть вам траплятись в пошуку та яким буде відображатись ваша анкета. (18–99):"
+          );
         case "minAge": {
           const minAge = parseInt(ctx.message.text, 10);
           if (isNaN(minAge) || minAge < 18 || minAge > 99) {
@@ -1081,11 +1088,18 @@ bot.on("message", async (ctx, next) => {
           user.data.minAge = minAge;
           user.step = "maxAge";
           await saveUser(user);
-          return ctx.reply("Введіть максимальний вік анкет, які вам підходять. (Має бути ≥ мінімального і не більше 99)");
+          return ctx.reply(
+            "Введіть максимальний вік анкет, які вам підходять. (Має бути ≥ мінімального і не більше 99)"
+          );
         }
         case "maxAge": {
           const maxAge = parseInt(ctx.message.text, 10);
-          if (isNaN(maxAge) || maxAge < 18 || maxAge > 99 || maxAge < user.data.minAge) {
+          if (
+            isNaN(maxAge) ||
+            maxAge < 18 ||
+            maxAge > 99 ||
+            maxAge < user.data.minAge
+          ) {
             return ctx.reply("Введіть коректний максимальний вік (18-99):");
           }
           user.data.maxAge = maxAge;
@@ -1233,7 +1247,11 @@ async function handleSearch(ctx, user, id, isInline = false) {
     if (user.data.minAge && user.data.maxAge) {
       filtered = filtered.filter((u) => {
         const age = u.data.age;
-        return typeof age === "number" && age >= user.data.minAge && age <= user.data.maxAge;
+        return (
+          typeof age === "number" &&
+          age >= user.data.minAge &&
+          age <= user.data.maxAge
+        );
       });
     }
     // Sort by proximity if coordinates are available
@@ -1266,10 +1284,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
       user.hasUsedBackInSearch = false;
       await saveUser(user);
       if (isInline) {
-        await ctx.reply(
-          "Анкет більше немає. Спробуй пізніше.",
-          mainMenu
-        );
+        await ctx.reply("Анкет більше немає. Спробуй пізніше.", mainMenu);
       } else {
         await ctx.reply("Анкет більше немає. Спробуй пізніше.", mainMenu);
       }
@@ -1908,7 +1923,14 @@ bot.hears("⭐", async (ctx) => {
 
 bot.action("buy_premium", async (ctx) => {
   await ctx.answerCbQuery();
-  await ctx.reply(
-    "⏳ Оплата наразі у розробці. Незабаром зʼявиться можливість підтримати нас ❤️"
-  );
+  await ctx.replyWithHTML(`
+💳 <b>Щоб отримати преміум</b>:
+
+1. Переведіть <b>100 грн</b> на карту:  
+<code>1111 1111 1111 1111</code>
+
+2. Надішліть скріншот платежу сюди 👉 <a href="https://t.me/znaimoHelper">@znaimoHelper</a>
+
+Ми вручну активуємо вам доступ протягом години. Дякуємо за підтримку!
+  `);
 });
