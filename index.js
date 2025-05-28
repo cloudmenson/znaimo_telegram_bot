@@ -1,4 +1,5 @@
 const express = require("express");
+
 const { Telegraf, Markup } = require("telegraf");
 const cron = require("node-cron");
 require("dotenv").config();
@@ -18,6 +19,15 @@ const geocoder = NodeGeocoder({ provider: "openstreetmap" });
 
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
+
+// --- CLEAR USER TEMP FIELDS UTILITY ---
+function clearUserTempFields(user) {
+  user.editStep = null;
+  user.step = null;
+  user.hasUsedBackInSearch = false;
+  user.searchHistory = [];
+  if (user._backupPhotos) delete user._backupPhotos;
+}
 
 // Глобальний обробник помилок Telegraf
 bot.catch((err, ctx) => {
@@ -1199,6 +1209,7 @@ bot.on("message", async (ctx, next) => {
           }
           user.finished = true;
           user.step = null;
+          clearUserTempFields(user);
           await saveUser(user);
 
           await ctx.reply("✅ Ваша анкета готова!", mainMenu);
@@ -1298,6 +1309,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
       user.disliked = [];
       user.lastAction = "search";
       user.hasUsedBackInSearch = false;
+      clearUserTempFields(user);
       await saveUser(user);
       if (isInline) {
         await ctx.reply("Анкет більше немає. Спробуй пізніше.", mainMenu);
@@ -1312,6 +1324,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
     user.currentView = other.id;
     user.lastAction = "search";
     user.hasUsedBackInSearch = false;
+    clearUserTempFields(user);
     await saveUser(user);
 
     const photos = other.data.photos;
@@ -1551,6 +1564,11 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
       if (!user.disliked.includes(otherId)) {
         user.disliked.push(otherId);
       }
+      clearUserTempFields(user);
+      await saveUser(user);
+    } else {
+      clearUserTempFields(user);
+      // like branch already did saveUser above, but we clear again for safety
       await saveUser(user);
     }
     await handleSearch(ctx, user, id, isInline);
