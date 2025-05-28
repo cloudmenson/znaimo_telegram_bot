@@ -142,21 +142,31 @@ const startProfile = {
 };
 
 function prettyProfile(user) {
-  const name = user.data.name || "";
-  const age = user.data.age || "";
-  const city = user.data.city || "";
-  const about = user.data.about;
-  let profileText = `<b>• Ім'я:</b> ${name}\n<b>• Вік:</b> ${age}\n`;
+  let profileText = "";
 
+  // Преміум — окремий рядок
   if (user.premiumUntil && new Date(user.premiumUntil) > new Date()) {
-    profileText += `\n<b>⭐ Premium</b>\n`;
+    profileText += `⭐ Premium\n`;
   }
 
-  if (city) {
-    profileText += `<b>• Місто:</b> ${city}\n`;
+  // Ім'я
+  if (user.name) {
+    profileText += `\n• Ім'я: ${user.name}`;
   }
-  if (about) {
-    profileText += `\n<b>• Про себе:</b> ${about}`;
+
+  // Вік
+  if (user.age) {
+    profileText += `\n• Вік: ${user.age}`;
+  }
+
+  // Місто
+  if (user.city) {
+    profileText += `\n• Місто: ${user.city}`;
+  }
+
+  // Відступ і опис
+  if (user.about) {
+    profileText += `\n\n${user.about}`;
   }
 
   return profileText;
