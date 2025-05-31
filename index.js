@@ -1,3 +1,13 @@
+const i18n = require("./translations");
+const db = require("./mongo");
+const getLang = (ctx) => {
+  // Try to get user language from DB, fallback to Telegram or uk
+  if (db && typeof db.getUserLang === "function") {
+    const userLang = db.getUserLang(ctx.from.id);
+    return userLang || ctx?.from?.language_code || "uk";
+  }
+  return ctx?.from?.language_code || "uk";
+};
 const express = require("express");
 
 const { Telegraf, Markup } = require("telegraf");
@@ -32,7 +42,7 @@ function clearUserTempFields(user) {
 // Глобальний обробник помилок Telegraf
 bot.catch((err, ctx) => {
   console.error("BOT ERROR", err);
-  ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
+  ctx.reply(i18n.t("error_technical", getLang(ctx)));
 });
 
 // Привітальне повідомлення для нових користувачіва
@@ -49,15 +59,9 @@ bot.on("message", async (ctx, next) => {
 
     // Особисте звертання по імені
     await ctx.reply(
-      `👋 Привіт, ${ctx.from.first_name}! Ласкаво просимо до Znaimo!
-
-Щоб почати, натисни /start.
-
-Я допоможу тобі:
-• Створити власну анкету
-• Знайти та переглянути анкети інших
-• Розпочати спілкування одразу після зустрічі лайків!`
+      i18n.t("welcome", getLang(ctx), { name: ctx.from.first_name })
     );
+    await ctx.reply(i18n.t("help_intro", getLang(ctx)));
     return;
   }
   return next();
@@ -67,20 +71,24 @@ bot.on("message", async (ctx, next) => {
 const mainMenu = Markup.keyboard([["🔍", "✏️", "⭐", "👤", "❓"]])
   .resize()
   .oneTime(false);
+
+// Інлайн-меню для головних дій (з кнопкою зміни мови)
+const mainInlineMenu = Markup.inlineKeyboard([
+  [
+    Markup.button.callback("🌍 Змінити мову", "change_language"),
+  ],
+]);
 // Відображення власного профілю через клавіатуру
 bot.hears("👤", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
   // Якщо анкета незавершена
   if (!user || !user.finished) {
-    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
+    return ctx.reply(i18n.t("profile_not_created", getLang(ctx)));
   }
   // Якщо фото відсутні
   if (!user.data.photos || user.data.photos.length === 0) {
-    return ctx.reply(
-      "У твоїй анкеті ще немає фото.\n" +
-        "Щоб додати фото, натисни «✏️ Змінити."
-    );
+    return ctx.reply(i18n.t("profile_no_photos", getLang(ctx)));
   }
   // Показуємо медіа-групу з анкетою
   await ctx.replyWithMediaGroup([
@@ -95,7 +103,7 @@ bot.hears("👤", async (ctx) => {
       .map((file_id) => ({ type: "photo", media: file_id })),
   ]);
   // Повертаємо меню дій
-  await ctx.reply("Обери дію:", mainMenu);
+  await ctx.reply(i18n.t("choose_action", getLang(ctx)), mainMenu);
 });
 
 // Меню очікування лайків (reply-keyboard)
@@ -207,7 +215,7 @@ async function checkPendingLikes(ctx, user) {
         })),
       ]);
       // 2. Потім надсилаємо текст з кнопками та додатковою інструкцією
-      await ctx.reply("💞 Вам хтось поставив лайк!", pendingMenu);
+      await ctx.reply(i18n.t("like_request", getLang(ctx)), pendingMenu);
     } else {
       // Якщо користувач видалив анкету — просто видаляємо з черги
       user.pendingLikes.shift();
@@ -226,7 +234,7 @@ bot.start(async (ctx) => {
   // 0) Check if user already exists in DB
   const existing = await loadUser(ctx.from.id);
   if (existing) {
-    return ctx.reply("У вас вже є анкета.", mainMenu);
+    return ctx.reply(i18n.t("already_has_profile", getLang(ctx)), mainMenu);
   }
   // Зберігаємо id реферера, якщо є startPayload
   const referrerId = ctx.startPayload ? parseInt(ctx.startPayload) : null;
@@ -235,17 +243,9 @@ bot.start(async (ctx) => {
   // await ctx.sendChatAction("typing");
   // 2) Персональне вітання
   await ctx.reply(
-    `👋 Привіт, ${ctx.from.first_name}! Ласкаво просимо до Znaimo!`
+    i18n.t("welcome", getLang(ctx), { name: ctx.from.first_name })
   );
-
-  // Доповненне повідомлення після вітання
-  // await ctx.sendChatAction("typing");
-  await ctx.reply(
-    `Я допоможу тобі:
-• Створити власну анкету
-• Знайти та переглянути анкети інших
-• Розпочати спілкування одразу після зустрічі лайків!`
-  );
+  await ctx.reply(i18n.t("help_intro", getLang(ctx)));
 
   // 3) Ще один “typing…” перед наступним кроком
   // await ctx.sendChatAction("typing");
@@ -306,12 +306,12 @@ bot.command("find", async (ctx) => {
   // Дія як bot.action("search")
   const id = ctx.from.id;
   let user = await loadUser(id);
-  if (!user) {
-    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
-  }
-  if (!user.finished) {
-    return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
-  }
+    if (!user) {
+      return ctx.reply(i18n.t("profile_not_created", getLang(ctx)));
+    }
+    if (!user.finished) {
+      return ctx.reply(i18n.t("profile_not_complete", getLang(ctx)));
+    }
   await handleSearch(ctx, user, id, false);
 });
 
@@ -320,18 +320,15 @@ bot.command("profile", async (ctx) => {
   const user = await loadUser(id);
   // Якщо анкету не створено
   if (!user) {
-    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
+    return ctx.reply(i18n.t("profile_not_created", getLang(ctx)));
   }
   // Якщо анкета не завершена
   if (!user.finished) {
-    return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
+    return ctx.reply(i18n.t("profile_not_complete", getLang(ctx)));
   }
   // Якщо фото відсутні
   if (!user.data.photos || user.data.photos.length === 0) {
-    return ctx.reply(
-      "У твоїй анкеті ще немає фото.\n\n" +
-        "Щоб додати фото, натисни «✏️ Змінити або виконай /edit."
-    );
+    return ctx.reply(i18n.t("profile_no_photos", getLang(ctx)));
   }
   // Інакше показуємо медіа-групу та меню дій
   const photos = user.data.photos;
@@ -354,10 +351,10 @@ bot.command("edit", async (ctx) => {
   const id = ctx.from.id;
   let user = await loadUser(id);
   if (!user) {
-    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
+    return ctx.reply(i18n.t("profile_not_created", getLang(ctx)));
   }
   if (!user.finished) {
-    return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
+    return ctx.reply(i18n.t("profile_not_complete", getLang(ctx)));
   }
   await ctx.reply("Що ти хочеш змінити?", editProfileMenu);
 });
@@ -1706,12 +1703,12 @@ bot.hears("⚙️", async (ctx) => {
 bot.command("referral", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
-  if (!user) {
-    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
-  }
-  if (!user.finished) {
-    return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
-  }
+    if (!user) {
+      return ctx.reply(i18n.t("profile_not_created", getLang(ctx)));
+    }
+    if (!user.finished) {
+      return ctx.reply(i18n.t("profile_not_complete", getLang(ctx)));
+    }
   const count = user.referrals ? user.referrals.length : 0;
   const today = new Date().toISOString().slice(0, 10);
   const referralBonus = count * 5;
@@ -1763,10 +1760,10 @@ bot.command("privacy", async (ctx) => {
   const id = ctx.from.id;
   const user = await loadUser(id);
   if (!user) {
-    return ctx.reply("Ти ще не створив анкету. Натисни /start.");
+    return ctx.reply(i18n.t("profile_not_created", getLang(ctx)));
   }
   if (!user.finished) {
-    return ctx.reply("Твоя анкета ще не завершена. Продовжимо її створення.");
+    return ctx.reply(i18n.t("profile_not_complete", getLang(ctx)));
   }
   await ctx.replyWithHTML(`
 🔒 <b>Політика приватності для Telegram-бота Znaimo</b>
@@ -1842,10 +1839,42 @@ bot.command("blacklist", async (ctx) => {
 
 // language
 bot.command("language", async (ctx) => {
-  const id = ctx.from.id;
-  const user = await loadUser(id);
-  // TODO: імплементувати переклади
-  await ctx.reply("🌐 Майбутні мови: 🇵🇱, 🇬🇧 — у розробці.");
+  await ctx.reply(i18n.t("language_select_prompt", getLang(ctx)), {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "Українська", callback_data: "set_lang_uk" },
+          { text: "English", callback_data: "set_lang_en" },
+          { text: "Polski", callback_data: "set_lang_pl" },
+        ],
+      ],
+    },
+  });
+});
+
+// Кнопка зміни мови у головному меню
+bot.action("change_language", async (ctx) => {
+  await ctx.reply(i18n.t("language_select_prompt", getLang(ctx)), {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "Українська", callback_data: "set_lang_uk" },
+          { text: "English", callback_data: "set_lang_en" },
+          { text: "Polski", callback_data: "set_lang_pl" },
+        ],
+      ],
+    },
+  });
+});
+
+// Обробник вибору мови
+bot.action(/set_lang_(.+)/, async (ctx) => {
+  const lang = ctx.match[1];
+  if (db && typeof db.updateUserLang === "function") {
+    await db.updateUserLang(ctx.from.id, lang);
+  }
+  await ctx.answerCbQuery(i18n.t("language_changed", lang));
+  await ctx.reply(i18n.t("choose_action", lang), mainMenu);
 });
 
 bot.action("edit_blacklist", async (ctx) => {
