@@ -29,7 +29,6 @@ const {
   loadUser,
   saveUser,
   removeUser,
-  getAllUsers,
 } = require("./mongo");
 
 const NodeGeocoder = require("node-geocoder");
@@ -1262,12 +1261,25 @@ async function handleSearch(ctx, user, id, isInline = false) {
     const hasPending = await checkPendingLikes(ctx, user);
     if (hasPending) return;
 
+    // Fetch only necessary fields for search directly from DB for performance
+    const db = getDb();
+    const allUsers = await db
+      .collection("users")
+      .find({ finished: true, id: { $ne: id } })
+      .project({
+        id: 1,
+        "data.photos": 1,
+        "data.name": 1,
+        "data.city": 1,
+        "data.age": 1,
+        "data.gender": 1,
+        "data.latitude": 1,
+        "data.longitude": 1,
+      })
+      .toArray();
     const seen = user.seen || [];
     const disliked = user.disliked || [];
-    const [_, allUsers] = await Promise.all([
-      Promise.resolve(user), // keep for symmetry, user is already loaded
-      getAllUsers(),
-    ]);
+
     // Initial filter: exclude self, unfinished, seen, disliked, currentView, and users without valid photo(s)
     let filtered = allUsers.filter(
       (u) =>
