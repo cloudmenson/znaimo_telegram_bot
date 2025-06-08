@@ -640,7 +640,7 @@ bot.hears("💥", async (ctx) => {
       }
       return;
     }
-    await ctx.reply("💥 Супер-лайк надіслано!", searchMenu);
+    await ctx.reply("\u200B", searchMenu);
     user.seen = user.seen || [];
     if (!user.seen.includes(otherId)) user.seen.push(otherId);
     await saveUser(user);
@@ -667,7 +667,7 @@ bot.action("confirm_superlike", async (ctx) => {
   user.superLikesUsed.push(today);
   await saveUser(user);
   await handleLikeDislike(ctx, user, "like");
-  await ctx.reply("💥 Супер-лайк надіслано!", searchMenu);
+  await ctx.reply("\u200B", searchMenu);
 });
 
 // Обробник для скасування супер-лайка
@@ -1372,7 +1372,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
       { type: "photo", media: photos[0], caption: prettyProfile(other), parse_mode: "HTML" },
       ...photos.slice(1).map((file_id) => ({ type: "photo", media: file_id }))
     ]);
-    await ctx.reply("💝/❌ Зробіть свій вибір:", searchMenu);
+    await ctx.reply('\u200B', searchMenu);
   } catch (e) {
     console.error("handleSearch ERROR:", e);
     await ctx.reply("Виникла технічна помилка. Спробуйте ще раз.");
