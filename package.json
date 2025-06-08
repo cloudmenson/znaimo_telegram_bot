@@ -17,6 +17,7 @@
     "geolib": "3.3.4",
     "@faker-js/faker": "9.8.0",
     "node-fetch": "3.3.2",
-    "node-cron": "4.0.7"
+    "node-cron": "4.0.7",
+    "tz-lookup": "6.1.25"
   }
 }
