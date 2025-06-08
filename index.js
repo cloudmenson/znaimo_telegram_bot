@@ -1326,7 +1326,6 @@ async function handleSearch(ctx, user, id, isInline = false) {
 
     if (!other) {
       user.currentView = null;
-      user.disliked = [];
       user.lastAction = "search";
       user.hasUsedBackInSearch = false;
       clearUserTempFields(user);
