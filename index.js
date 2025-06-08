@@ -29,7 +29,6 @@ const {
   loadUser,
   saveUser,
   removeUser,
-  getAllUsers,
 } = require("./mongo");
 
 const NodeGeocoder = require("node-geocoder");
@@ -1262,67 +1261,64 @@ async function handleSearch(ctx, user, id, isInline = false) {
     const hasPending = await checkPendingLikes(ctx, user);
     if (hasPending) return;
 
+    // Fetch one candidate from the database matching search criteria
+    const db = getDb();
     const seen = user.seen || [];
     const disliked = user.disliked || [];
-    const [_, allUsers] = await Promise.all([
-      Promise.resolve(user), // keep for symmetry, user is already loaded
-      getAllUsers(),
-    ]);
-    // Initial filter: exclude self, unfinished, seen, disliked, currentView, and users without valid photo(s)
-    let filtered = allUsers.filter(
-      (u) =>
-        u.id !== id &&
-        u.finished &&
-        !seen.includes(u.id) &&
-        u.id !== user.currentView &&
-        !disliked.includes(u.id) &&
-        !(user.blacklist || []).includes(u.id) &&
-        Array.isArray(u.data.photos) &&
-        u.data.photos.some(Boolean)
-    );
-    // Apply gender filter if selected
+    const blacklist = user.blacklist || [];
+    const query = {
+      finished: true,
+      id: { $ne: id, $nin: [...seen, ...disliked, ...blacklist] },
+      "data.photos.0": { $exists: true },
+      "data.age": { $gte: user.data.minAge, $lte: user.data.maxAge },
+    };
     if (
       user.data.searchGender &&
-      user.data.searchGender !== "" &&
       user.data.searchGender !== "Будь-хто"
     ) {
-      const target =
+      query["data.gender"] =
         user.data.searchGender === "Хлопці" ? "Хлопець" : "Дівчина";
-      filtered = filtered.filter((u) => u.data.gender === target);
     }
-    // Apply age range filter (FIXED)
-    if (user.data.minAge && user.data.maxAge) {
-      filtered = filtered.filter((u) => {
-        const age = u.data.age;
-        return (
-          typeof age === "number" &&
-          age >= user.data.minAge &&
-          age <= user.data.maxAge
-        );
-      });
-    }
-    // Sort by proximity if coordinates are available
-    let candidates = filtered;
+    let result;
     if (user.data.latitude != null && user.data.longitude != null) {
-      const withCoords = filtered.filter(
-        (u) => u.data.latitude != null && u.data.longitude != null
-      );
-      const sortedCoords = withCoords
-        .map((u) => ({
-          user: u,
-          distance: geolib.getDistance(
-            { latitude: user.data.latitude, longitude: user.data.longitude },
-            { latitude: u.data.latitude, longitude: u.data.longitude }
-          ),
-        }))
-        .sort((a, b) => a.distance - b.distance)
-        .map((item) => item.user);
-      const withoutCoords = filtered.filter(
-        (u) => u.data.latitude == null || u.data.longitude == null
-      );
-      candidates = [...sortedCoords, ...withoutCoords];
+      // Use geoNear aggregation (requires 2dsphere index on data.location)
+      result = await db
+        .collection("users")
+        .aggregate([
+          {
+            $geoNear: {
+              near: {
+                type: "Point",
+                coordinates: [user.data.longitude, user.data.latitude]
+              },
+              distanceField: "distance",
+              query: query,
+              spherical: true
+            }
+          },
+          {
+            $project: {
+              id: 1,
+              "data.photos": 1,
+              "data.name": 1,
+              "data.city": 1,
+              "data.age": 1,
+              "data.gender": 1
+            }
+          },
+          { $limit: 1 }
+        ])
+        .toArray();
+    } else {
+      // Fallback: simple find
+      result = await db
+        .collection("users")
+        .find(query)
+        .project({ id: 1, "data.photos": 1, "data.name": 1, "data.city": 1, "data.age": 1, "data.gender": 1 })
+        .limit(1)
+        .toArray();
     }
-    const other = candidates.length ? candidates[0] : null;
+    const other = result[0] || null;
 
     if (!other) {
       user.currentView = null;
