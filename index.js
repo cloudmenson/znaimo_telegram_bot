@@ -33,8 +33,15 @@ const {
 
 const NodeGeocoder = require("node-geocoder");
 const geolib = require("geolib");
-// Configure geocoder to use OpenStreetMap
-const geocoder = NodeGeocoder({ provider: "openstreetmap" });
+// In-memory cache for geocoding results to reduce API calls
+const geoCache = {};
+const geocoder = NodeGeocoder({
+  provider: "openstreetmap",
+  httpAdapter: "https",
+  headers: {
+    "User-Agent": "ZnaimoBot/1.0 (https://znaimo-telegram-bot.onrender.com)"
+  }
+});
 
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -931,12 +938,20 @@ bot.on("message", async (ctx, next) => {
               return ctx.reply("Введи коректну назву міста:");
             }
             user.data.city = ctx.message.text.trim();
-            // Geocode city to coordinates
+            // Geocode city to coordinates with cache
             try {
-              const geoRes = await geocoder.geocode(user.data.city);
-              if (geoRes && geoRes.length) {
-                user.data.latitude = geoRes[0].latitude;
-                user.data.longitude = geoRes[0].longitude;
+              const cityKey = user.data.city.trim().toLowerCase();
+              if (geoCache[cityKey]) {
+                user.data.latitude = geoCache[cityKey].latitude;
+                user.data.longitude = geoCache[cityKey].longitude;
+              } else {
+                const geoRes = await geocoder.geocode(user.data.city);
+                if (geoRes && geoRes.length) {
+                  const { latitude, longitude } = geoRes[0];
+                  user.data.latitude = latitude;
+                  user.data.longitude = longitude;
+                  geoCache[cityKey] = { latitude, longitude };
+                }
               }
             } catch (e) {
               console.error("GEOCODE ERROR:", e);
@@ -1088,12 +1103,20 @@ bot.on("message", async (ctx, next) => {
             return ctx.reply("Введи коректну назву міста:");
           }
           user.data.city = ctx.message.text.trim();
-          // Geocode city to coordinates
+          // Geocode city to coordinates with cache
           try {
-            const geoRes = await geocoder.geocode(user.data.city);
-            if (geoRes && geoRes.length) {
-              user.data.latitude = geoRes[0].latitude;
-              user.data.longitude = geoRes[0].longitude;
+            const cityKey = user.data.city.trim().toLowerCase();
+            if (geoCache[cityKey]) {
+              user.data.latitude = geoCache[cityKey].latitude;
+              user.data.longitude = geoCache[cityKey].longitude;
+            } else {
+              const geoRes = await geocoder.geocode(user.data.city);
+              if (geoRes && geoRes.length) {
+                const { latitude, longitude } = geoRes[0];
+                user.data.latitude = latitude;
+                user.data.longitude = longitude;
+                geoCache[cityKey] = { latitude, longitude };
+              }
             }
           } catch (e) {
             console.error("GEOCODE ERROR:", e);
