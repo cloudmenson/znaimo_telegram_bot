@@ -1262,7 +1262,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
     if (hasPending) return;
 
     // Fetch only necessary fields for search directly from DB for performance
-    const db = getDb();
+    const db = await getDb();
     const allUsers = await db
       .collection("users")
       .find({ finished: true, id: { $ne: id } })
