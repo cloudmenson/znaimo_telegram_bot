@@ -2,7 +2,27 @@ const express = require("express");
 
 const { Telegraf, Markup } = require("telegraf");
 const cron = require("node-cron");
+
 require("dotenv").config();
+const tzLookup = require("tz-lookup");
+// Helper: determine if it's night (before 8h or after 22h) in user's timezone
+function isNight(user) {
+  if (user.data.latitude == null || user.data.longitude == null) return false;
+  try {
+    const tz = tzLookup(user.data.latitude, user.data.longitude);
+    const hour = parseInt(
+      new Date().toLocaleString("en-US", {
+        timeZone: tz,
+        hour12: false,
+        hour: "2-digit"
+      }),
+      10
+    );
+    return hour < 8 || hour >= 22;
+  } catch (e) {
+    return false;
+  }
+}
 
 const {
   getDb,
@@ -1619,38 +1639,49 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
 })();
 
 // push messages
-cron.schedule("0 */12 * * *", async () => {
+cron.schedule("0 * * * *", async () => {
   const allUsers = await getAllUsers();
   const now = Date.now();
 
   for (const user of allUsers) {
     if (!user.finished || !user.username) continue;
 
-    const lastUpdated = new Date(
-      user.updatedAt || user.createdAt || now
-    ).getTime();
-    if (now - lastUpdated < 12 * 60 * 60 * 1000) continue; // якщо був активний менш ніж 12 годин тому
+    const lastAct = user.lastActivity
+      || new Date(user.updatedAt).getTime()
+      || new Date(user.createdAt).getTime();
 
-    try {
-      try {
-        await bot.telegram.sendMessage(
-          user.id,
-          `👋 Привіт! У нас нові анкети — перевір, хто тебе міг вже лайкнути!`,
-          Markup.keyboard([["🔍", "⚙️"]])
-            .resize()
-            .oneTime(true)
-        );
-      } catch (e) {
-        if (
-          e.description?.includes("bot was blocked by the user") ||
-          e.description?.includes("USER_IS_BLOCKED")
-        ) {
-          continue;
-        }
-        continue;
-      }
-    } catch (e) {
-      continue;
+    const elapsed = now - lastAct;
+
+    if (elapsed >= 24*60*60*1000 && user.reminderStage < 1) {
+      const disableNotif = isNight(user);
+      const sendOptions = disableNotif ? { disable_notification: true } : {};
+      await bot.telegram.sendMessage(
+        user.id,
+        `👋 Підібрали для вас нові анкети! Показати?`,
+        sendOptions
+      );
+      user.reminderStage = 1;
+      await saveUser(user);
+    } else if (elapsed >= 72*60*60*1000 && user.reminderStage < 2) {
+      const disableNotif = isNight(user);
+      const sendOptions = disableNotif ? { disable_notification: true } : {};
+      await bot.telegram.sendMessage(
+        user.id,
+        `🌟 За час поки ви були неактивні ми знайшли для вас нові анкети!`,
+        sendOptions
+      );
+      user.reminderStage = 2;
+      await saveUser(user);
+    } else if (elapsed >= 7*24*60*60*1000 && user.reminderStage < 3) {
+      const disableNotif = isNight(user);
+      const sendOptions = disableNotif ? { disable_notification: true } : {};
+      await bot.telegram.sendMessage(
+        user.id,
+        `⏳ Ми більше не будемо надсилати вам повідомлення через неактивність.`,
+        sendOptions
+      );
+      user.reminderStage = 3;
+      await saveUser(user);
     }
   }
 });
