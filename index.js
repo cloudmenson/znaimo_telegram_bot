@@ -1279,66 +1279,67 @@ async function handleSearch(ctx, user, id, isInline = false) {
     const hasPending = await checkPendingLikes(ctx, user);
     if (hasPending) return;
 
-    // Restore original in-memory fetch for reliability
-    const allUsers = await getAllUsers();
+    // Prepare DB query filters
+    const db = await getDb();
     const seen = user.seen || [];
     const disliked = user.disliked || [];
-
-    // Initial filter: exclude self, unfinished, seen, disliked, currentView, and users without valid photo(s)
-    let filtered = allUsers.filter(
-      (u) =>
-        u.id !== id &&
-        u.finished &&
-        !seen.includes(u.id) &&
-        u.id !== user.currentView &&
-        !disliked.includes(u.id) &&
-        !(user.blacklist || []).includes(u.id) &&
-        Array.isArray(u.data.photos) &&
-        u.data.photos.some(Boolean)
-    );
-    // Apply gender filter if selected
-    if (
-      user.data.searchGender &&
-      user.data.searchGender !== "" &&
-      user.data.searchGender !== "Будь-хто"
-    ) {
-      const target =
+    const blacklist = user.blacklist || [];
+    const query = {
+      finished: true,
+      id: { $ne: id, $nin: [...seen, ...disliked, ...blacklist] },
+      "data.photos.0": { $exists: true }
+    };
+    if (user.data.minAge != null && user.data.maxAge != null) {
+      query["data.age"] = { $gte: user.data.minAge, $lte: user.data.maxAge };
+    }
+    if (user.data.searchGender && user.data.searchGender !== "Будь-хто") {
+      query["data.gender"] =
         user.data.searchGender === "Хлопці" ? "Хлопець" : "Дівчина";
-      filtered = filtered.filter((u) => u.data.gender === target);
     }
-    // Apply age range filter (FIXED)
-    if (user.data.minAge && user.data.maxAge) {
-      filtered = filtered.filter((u) => {
-        const age = u.data.age;
-        return (
-          typeof age === "number" &&
-          age >= user.data.minAge &&
-          age <= user.data.maxAge
-        );
-      });
+
+    // Fetch one candidate sorted by proximity if available
+    let result;
+    if (user.data.location && user.data.location.type === "Point") {
+      result = await db
+        .collection("users")
+        .aggregate([
+          {
+            $geoNear: {
+              near: user.data.location,
+              distanceField: "distance",
+              query,
+              spherical: true
+            }
+          },
+          {
+            $project: {
+              id: 1,
+              "data.photos": 1,
+              "data.name": 1,
+              "data.city": 1,
+              "data.age": 1,
+              "data.gender": 1
+            }
+          },
+          { $limit: 1 }
+        ])
+        .toArray();
+    } else {
+      result = await db
+        .collection("users")
+        .find(query)
+        .project({
+          id: 1,
+          "data.photos": 1,
+          "data.name": 1,
+          "data.city": 1,
+          "data.age": 1,
+          "data.gender": 1
+        })
+        .limit(1)
+        .toArray();
     }
-    // Sort by proximity if coordinates are available
-    let candidates = filtered;
-    if (user.data.latitude != null && user.data.longitude != null) {
-      const withCoords = filtered.filter(
-        (u) => u.data.latitude != null && u.data.longitude != null
-      );
-      const sortedCoords = withCoords
-        .map((u) => ({
-          user: u,
-          distance: geolib.getDistance(
-            { latitude: user.data.latitude, longitude: user.data.longitude },
-            { latitude: u.data.latitude, longitude: u.data.longitude }
-          ),
-        }))
-        .sort((a, b) => a.distance - b.distance)
-        .map((item) => item.user);
-      const withoutCoords = filtered.filter(
-        (u) => u.data.latitude == null || u.data.longitude == null
-      );
-      candidates = [...sortedCoords, ...withoutCoords];
-    }
-    const other = candidates.length ? candidates[0] : null;
+    const other = result[0] || null;
 
     if (!other) {
       user.currentView = null;
@@ -1346,15 +1347,11 @@ async function handleSearch(ctx, user, id, isInline = false) {
       user.hasUsedBackInSearch = false;
       clearUserTempFields(user);
       await saveUser(user);
-      if (isInline) {
-        await ctx.reply("Анкет більше немає. Спробуй пізніше.", mainMenu);
-      } else {
-        await ctx.reply("Анкет більше немає. Спробуй пізніше.", mainMenu);
-      }
-      return;
+      const msg = "Анкет більше немає. Спробуй пізніше.";
+      return isInline ? ctx.reply(msg, mainMenu) : ctx.reply(msg, mainMenu);
     }
 
-    // Save previous view before updating
+    // Save view and show profile
     user.lastView = user.currentView || null;
     user.currentView = other.id;
     user.lastAction = "search";
@@ -1364,18 +1361,9 @@ async function handleSearch(ctx, user, id, isInline = false) {
 
     const photos = other.data.photos;
     await ctx.replyWithMediaGroup([
-      {
-        type: "photo",
-        media: photos[0],
-        caption: prettyProfile(other),
-        parse_mode: "HTML",
-      },
-      ...photos.slice(1).map((file_id) => ({
-        type: "photo",
-        media: file_id,
-      })),
+      { type: "photo", media: photos[0], caption: prettyProfile(other), parse_mode: "HTML" },
+      ...photos.slice(1).map((file_id) => ({ type: "photo", media: file_id }))
     ]);
-    // Use reply-keyboard for search mode
     await ctx.reply("💝/❌ Зробіть свій вибір:", searchMenu);
   } catch (e) {
     console.error("handleSearch ERROR:", e);
@@ -1428,20 +1416,28 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
     // If the liked user is a mock, skip real messaging
     if (likedUser && likedUser.mock) {
       // Treat as a simple like: mark seen and show next profile
-      if (!user.seen.includes(otherId)) {
-        user.seen.push(otherId);
-      }
-      await saveUser(user);
+      // Atomic add to seen
+      const db = await getDb();
+      await db.collection("users").updateOne(
+        { id: user.id },
+        { $addToSet: { seen: otherId } }
+      );
+      // Reflect change in memory
+      user = await loadUser(user.id);
       return await handleSearch(ctx, user, id, isInline);
     }
 
     if (action === "dislike") {
       // Не додаємо otherId до seen при дизлайку
     } else {
-      if (!user.seen.includes(otherId)) {
-        user.seen.push(otherId);
-      }
-      await saveUser(user);
+      // Atomic add to seen
+      const db = await getDb();
+      await db.collection("users").updateOne(
+        { id: user.id },
+        { $addToSet: { seen: otherId } }
+      );
+      // Reflect change in memory
+      user = await loadUser(user.id);
     }
 
     if (likedUser) {
@@ -1595,16 +1591,18 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
       }
     }
     if (action === "dislike") {
-      if (!user.disliked) user.disliked = [];
-      if (!user.disliked.includes(otherId)) {
-        user.disliked.push(otherId);
-      }
+      // Atomic add to disliked
+      const db = await getDb();
+      await db.collection("users").updateOne(
+        { id: user.id },
+        { $addToSet: { disliked: otherId } }
+      );
+      // Reflect change in memory
+      user = await loadUser(user.id);
       clearUserTempFields(user);
-      await saveUser(user);
     } else {
       clearUserTempFields(user);
-      // like branch already did saveUser above, but we clear again for safety
-      await saveUser(user);
+      // No need to saveUser here, since user was just reloaded after updateOne above.
     }
     await handleSearch(ctx, user, id, isInline);
   } catch (e) {
