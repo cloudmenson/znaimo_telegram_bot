@@ -24,7 +24,7 @@ function isNight(user) {
   }
 }
 
-const { getDb, loadUser, saveUser, removeUser } = require("./mongo");
+const { getDb, loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
 
 const NodeGeocoder = require("node-geocoder");
 const geolib = require("geolib");
@@ -1279,22 +1279,8 @@ async function handleSearch(ctx, user, id, isInline = false) {
     const hasPending = await checkPendingLikes(ctx, user);
     if (hasPending) return;
 
-    // Fetch only necessary fields for search directly from DB for performance
-    const db = await getDb();
-    const allUsers = await db
-      .collection("users")
-      .find({ finished: true, id: { $ne: id } })
-      .project({
-        id: 1,
-        "data.photos": 1,
-        "data.name": 1,
-        "data.city": 1,
-        "data.age": 1,
-        "data.gender": 1,
-        "data.latitude": 1,
-        "data.longitude": 1,
-      })
-      .toArray();
+    // Restore original in-memory fetch for reliability
+    const allUsers = await getAllUsers();
     const seen = user.seen || [];
     const disliked = user.disliked || [];
 
