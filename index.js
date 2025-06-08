@@ -14,7 +14,7 @@ function isNight(user) {
       new Date().toLocaleString("en-US", {
         timeZone: tz,
         hour12: false,
-        hour: "2-digit"
+        hour: "2-digit",
       }),
       10
     );
@@ -24,12 +24,7 @@ function isNight(user) {
   }
 }
 
-const {
-  getDb,
-  loadUser,
-  saveUser,
-  removeUser,
-} = require("./mongo");
+const { getDb, loadUser, saveUser, removeUser } = require("./mongo");
 
 const NodeGeocoder = require("node-geocoder");
 const geolib = require("geolib");
@@ -39,8 +34,8 @@ const geocoder = NodeGeocoder({
   provider: "openstreetmap",
   httpAdapter: "https",
   headers: {
-    "User-Agent": "ZnaimoBot/1.0 (https://znaimo-telegram-bot.onrender.com)"
-  }
+    "User-Agent": "ZnaimoBot/1.0 (https://znaimo-telegram-bot.onrender.com)",
+  },
 });
 
 const app = express();
@@ -1680,13 +1675,14 @@ cron.schedule("0 * * * *", async () => {
   for (const user of allUsers) {
     if (!user.finished || !user.username) continue;
 
-    const lastAct = user.lastActivity
-      || new Date(user.updatedAt).getTime()
-      || new Date(user.createdAt).getTime();
+    const lastAct =
+      user.lastActivity ||
+      new Date(user.updatedAt).getTime() ||
+      new Date(user.createdAt).getTime();
 
     const elapsed = now - lastAct;
 
-    if (elapsed >= 24*60*60*1000 && user.reminderStage < 1) {
+    if (elapsed >= 24 * 60 * 60 * 1000 && user.reminderStage < 1) {
       const disableNotif = isNight(user);
       const sendOptions = disableNotif ? { disable_notification: true } : {};
       await bot.telegram.sendMessage(
@@ -1696,7 +1692,7 @@ cron.schedule("0 * * * *", async () => {
       );
       user.reminderStage = 1;
       await saveUser(user);
-    } else if (elapsed >= 72*60*60*1000 && user.reminderStage < 2) {
+    } else if (elapsed >= 72 * 60 * 60 * 1000 && user.reminderStage < 2) {
       const disableNotif = isNight(user);
       const sendOptions = disableNotif ? { disable_notification: true } : {};
       await bot.telegram.sendMessage(
@@ -1706,7 +1702,7 @@ cron.schedule("0 * * * *", async () => {
       );
       user.reminderStage = 2;
       await saveUser(user);
-    } else if (elapsed >= 7*24*60*60*1000 && user.reminderStage < 3) {
+    } else if (elapsed >= 7 * 24 * 60 * 60 * 1000 && user.reminderStage < 3) {
       const disableNotif = isNight(user);
       const sendOptions = disableNotif ? { disable_notification: true } : {};
       await bot.telegram.sendMessage(
