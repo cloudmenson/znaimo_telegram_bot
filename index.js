@@ -24,7 +24,17 @@ function isNight(user) {
   }
 }
 
+
 const { getDb, loadUser, saveUser, removeUser, getAllUsers } = require("./mongo");
+// Cache MongoDB collection for performance
+let _usersCollection;
+async function getUsersCollection() {
+  if (!_usersCollection) {
+    const db = await getDb();
+    _usersCollection = db.collection("users");
+  }
+  return _usersCollection;
+}
 
 const NodeGeocoder = require("node-geocoder");
 const geolib = require("geolib");
@@ -1280,7 +1290,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
     if (hasPending) return;
 
     // Prepare DB query filters
-    const db = await getDb();
+    const usersCol = await getUsersCollection();
     const seen = user.seen || [];
     const disliked = user.disliked || [];
     const blacklist = user.blacklist || [];
@@ -1300,8 +1310,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
     // Fetch one candidate sorted by proximity if available
     let result;
     if (user.data.location && user.data.location.type === "Point") {
-      result = await db
-        .collection("users")
+      result = await usersCol
         .aggregate([
           {
             $geoNear: {
@@ -1325,8 +1334,7 @@ async function handleSearch(ctx, user, id, isInline = false) {
         ])
         .toArray();
     } else {
-      result = await db
-        .collection("users")
+      result = await usersCol
         .find(query)
         .project({
           id: 1,
@@ -1407,6 +1415,7 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
       }
     }
 
+    const usersCol = await getUsersCollection();
     // Load both user and liked/disliked user in parallel
     const [_, likedUser] = await Promise.all([
       Promise.resolve(user), // user already loaded
@@ -1416,28 +1425,26 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
     // If the liked user is a mock, skip real messaging
     if (likedUser && likedUser.mock) {
       // Treat as a simple like: mark seen and show next profile
-      // Atomic add to seen
-      const db = await getDb();
-      await db.collection("users").updateOne(
+      await usersCol.updateOne(
         { id: user.id },
         { $addToSet: { seen: otherId } }
       );
-      // Reflect change in memory
-      user = await loadUser(user.id);
+      // Update memory copy
+      if (!user.seen) user.seen = [];
+      if (!user.seen.includes(otherId)) user.seen.push(otherId);
       return await handleSearch(ctx, user, id, isInline);
     }
 
     if (action === "dislike") {
       // Не додаємо otherId до seen при дизлайку
     } else {
-      // Atomic add to seen
-      const db = await getDb();
-      await db.collection("users").updateOne(
+      await usersCol.updateOne(
         { id: user.id },
         { $addToSet: { seen: otherId } }
       );
-      // Reflect change in memory
-      user = await loadUser(user.id);
+      // Update memory copy
+      if (!user.seen) user.seen = [];
+      if (!user.seen.includes(otherId)) user.seen.push(otherId);
     }
 
     if (likedUser) {
@@ -1591,18 +1598,16 @@ async function handleLikeDislike(ctx, user, action, isInline = false) {
       }
     }
     if (action === "dislike") {
-      // Atomic add to disliked
-      const db = await getDb();
-      await db.collection("users").updateOne(
+      await usersCol.updateOne(
         { id: user.id },
         { $addToSet: { disliked: otherId } }
       );
-      // Reflect change in memory
-      user = await loadUser(user.id);
+      if (!user.disliked) user.disliked = [];
+      if (!user.disliked.includes(otherId)) user.disliked.push(otherId);
       clearUserTempFields(user);
     } else {
       clearUserTempFields(user);
-      // No need to saveUser here, since user was just reloaded after updateOne above.
+      // No need to saveUser here, since user was just updated above.
     }
     await handleSearch(ctx, user, id, isInline);
   } catch (e) {
